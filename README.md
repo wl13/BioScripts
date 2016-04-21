@@ -1,15 +1,17 @@
 # BioScripts
 
 ### INTRODUCTION
-Scripts for bioinformatics processing and analysis. Supplement to other more useful tools like bcftools(http://samtools.github.io/bcftools/), vcftools(https://vcftools.github.io/index.html) and etc.
+Scripts for bioinformatics processing and analysis. Supplement to other more useful tools like bcftools (http://samtools.github.io/bcftools/), vcftools (https://vcftools.github.io/index.html) and etc.
 
 ### INSTALL
 Add "MyPerl" folder to PERL5LIB, something like "export PERL5LIB=$HOME/folder_contain_MyPerl", or copy it to a pre-exist folder like "perl/site/lib", or just copy it to the same folder where you run the script
 
 ### USAGE
+Simply type "perl certain_script.pl" for details of each option or read through the descriptions below ..
+
 
 #### calc_vcf_diversity.pl
-**Calculate within- or between-groups diversities from a vcf file, an alternative choice of "vcftools --window-pi".**
+> Calculate within- or between-groups diversities from a vcf file, an alternative choice of "vcftools --window-pi".
 
     Version: 2.0.0
 
@@ -139,7 +141,7 @@ Add "MyPerl" folder to PERL5LIB, something like "export PERL5LIB=$HOME/folder_co
 
 
 #### fasta_process.pl
-**Query, extract and processing fasta sequences.**
+> Query, extract and processing fasta sequences.
 
     Version: 1.1.2
     
@@ -235,7 +237,7 @@ Add "MyPerl" folder to PERL5LIB, something like "export PERL5LIB=$HOME/folder_co
 
 
 #### gff2fasta.pl
-**Extract sequences from gff3 file to fasta file.**
+> Extract sequences from gff3 file to fasta file.
 
     Version: 1.1.0
     
@@ -268,11 +270,11 @@ Add "MyPerl" folder to PERL5LIB, something like "export PERL5LIB=$HOME/folder_co
 
 
 #### paintGenomeBlocks.pl
-**Plot blocks.**
+> Plot blocks.
 
     Version: 1.2.8
     
-    Usage:   perl /home/wl/Data/scripts/paintGenomeBlocks.pl [options]
+    Usage:   perl paintGenomeBlocks.pl [options]
     
     Options:
         -i, --input   <filename>
@@ -337,7 +339,7 @@ Add "MyPerl" folder to PERL5LIB, something like "export PERL5LIB=$HOME/folder_co
 
 
 #### reference_align.pl
-**Mapping with clustalw2(http://www.clustal.org/clustal2/) or muscle(http://www.drive5.com/muscle/).**
+> Mapping with clustalw2(http://www.clustal.org/clustal2/) or muscle(http://www.drive5.com/muscle/).
 
 Align sequences to a reference sequence, this was done by 2 steps:
 
@@ -379,11 +381,11 @@ sequence, and re-align all sequences to the consensus sequence.
     
 
 #### vcf_process.pl
-**Vcf format file related processing.**
+> Vcf format file related processing.
 
     Version: 2.4.4
     
-    Usage:   perl /home/wl/Data/scripts/vcf_process.pl [--vcf FILE | STDIN] [Filtering Options] [Output Options]
+    Usage:   perl vcf_process.pl [--vcf FILE | STDIN] [Filtering Options] [Output Options]
     
     Input Options:
     
