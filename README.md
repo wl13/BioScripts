@@ -29,15 +29,15 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 #### reference_align.pl
 > Mapping with clustalw2(http://www.clustal.org/clustal2/) or muscle(http://www.drive5.com/muscle/).
 
-    Align sequences to a reference sequence, this was done by 2 steps:
-    
-    **Step1:** align the first sequence to the reference sequence, and get
-    a expanded reference sequence with gaps inserted, then align the
-    second sequence to the new reference sequence, iterate this process
-    to generate a reference sequence expand all query sequences;
-    
-    **Step2:** build a consensus sequence with nucleotide replaced in reference
-    sequence, and re-align all sequences to the consensus sequence.
+Align sequences to a reference sequence, this was done by 2 steps:
+
+**Step1:** align the first sequence to the reference sequence, and get
+a expanded reference sequence with gaps inserted, then align the
+second sequence to the new reference sequence, iterate this process
+to generate a reference sequence expand all query sequences;
+
+**Step2:** build a consensus sequence with nucleotide replaced in reference
+sequence, and re-align all sequences to the consensus sequence.
 
 
 
