@@ -5,16 +5,14 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-31
-#   Updated: 2015-02-12
-#   Version: 1.0.1
+#   Updated: 2016-05-06
+#   Version: 1.1.1
 #
 #   Change logs:
 #   Version 1.0.0 13/11/13: The initial version.
 #   Version 1.1.0 15/02/12: Skip loci where chromosome sequence is not given; add
 #                           and change several options.
-
-
-
+#   Version 1.1.1 16/05/06: Bug fixed: use Parent id instead of ID field in CDS.
 
 
 
@@ -53,12 +51,12 @@ use MyPerl::Compare;
 ######################### Main #########################
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '1.1.0';
+my $VERSION = '1.1.1';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 my $SOURCE  = (scalar localtime()) . " Version: $VERSION";
 
 
-my $out_features = "gene";
+my $out_features = "mRNA";
 my $out_format   = "fasta";
 my ($gff_file, $output, $ref_seq, $out_details, $word_wrap, $show_help);
 GetOptions(
@@ -71,7 +69,7 @@ GetOptions(
             
             "R|features=s"       => \$out_features,
             
-            "word-wrap=i"        => \$word_wrap, 
+            "wordwrap=i"         => \$word_wrap, 
             
             "details"            => \$out_details,
             
@@ -101,9 +99,9 @@ Options:
         default: fasta
     
     -R, --features
-        output features, gene or cds, default: gene
+        output features, mRNA or cds, default: mRNA
 
-    -w, --word-wrap  <int>
+    -w, --wordwrap  <int>
         line feed for print
     
     -d, --details
@@ -127,6 +125,7 @@ if ($output) {
     open (STDOUT, "> $output") || die $!;
 }
 
+$out_features = lc($out_features);
 
 print STDERR ">> Start reading $ref_seq ... ";
 my %SEQs = ();
@@ -170,10 +169,10 @@ sub convert_gff2seqs
         
         my $ID = '';
         
-        if ($attribute =~ /^ID\=(.*?)(,|;|$)/) {        ## mRNA
+        if ($feature eq 'CDS' && $attribute =~ /Parent\=(.*?)(,|;|$)/) {  ## CDS
             $ID = $1;
         }
-        elsif ($attribute =~ /Parent\=(.*?)(,|;|$)/) {  ## CDS
+        elsif ($attribute =~ /^ID\=(.*?)(,|;|$)/) {                       ## mRNA
             $ID = $1;
         }
         
@@ -189,7 +188,7 @@ sub convert_gff2seqs
         }
     }
 
-    if ($out_features eq 'gene') {
+    if ($out_features eq 'mrna') {
         for my $chrom (sort keys %{$gff_features{gene}})
         {
             my @ids = sort { $gff_features{gene}->{$chrom}->{$a}->[0] <=>
