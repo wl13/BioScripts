@@ -5,8 +5,8 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-30
-#   Updated: 2016-02-10
-#   Version: 2.4.4
+#   Updated: 2016-05-04
+#   Version: 2.4.5
 #
 #   Change logs:
 #   Version 1.0.0 12/09/28: The initial version.
@@ -90,6 +90,8 @@
 #   Version 2.4.2 15/10/01: Add options to set combine tags while combine two vcf files; update Vcf.pm to version 1.6.3.
 #   Version 2.4.3 15/11/04: Add options to set combine rows while combine two vcf files; update Vcf.pm to version 1.6.4.
 #   Version 2.4.4 16/02/10: Updated: correct some explanation of options.
+#   Version 2.4.5 16/05/04: Updated: add option "--compare-rows".
+
 
 
 =head1 NAME
@@ -124,7 +126,7 @@ use MyPerl::Vcf qw(:all);
 ################### Main #################
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '2.4.4';
+my $VERSION = '2.4.5';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 my $SOURCE  = (scalar localtime()) . " Version: $VERSION";
 
@@ -144,6 +146,7 @@ GetOptions(
             "secondary-tag=s"        => \$options{secondary_tag},
             "intersect-tag=s"        => \$options{intersect_tag},
             "combine-rows=i{,}"      => \@{$options{combine_rows}},
+            "compare-rows=i{,}"      => \@{$options{compare_rows}},
             
             "output=s"               => \$options{output},
             
@@ -598,11 +601,21 @@ Combine Options:
         default: Intersection
 
     --combine-rows  <numbers>
-        Specify rows (0-based) used as compare keys, these rows determine
-        whether two records are same (intersection) or not (primary or
-        secondary), the CHROM and POS rows should always be specified,
+        Specify rows (0-based) used as master compare keys, these rows
+        determine whether two records are same (intersection) or not (primary
+        or secondary), the CHROM and POS rows should always be specified,
         default only use CHROM and POS fields (e.g. 0 1)
+    
+    --compare-rows  <numbers>
+        Specify rows (0-based) used as sub compare keys, records with same
+        combine rows but different compare rows would be merged and a SDIFF
+        tag would be added
         
+    *Note: if original vcf files to be combined contain duplicate records,
+        combined set would contain a "pseudo-union" set of those records, one
+        need to double check those loci
+
+
 Other Options:
 
     --threads  <int>
