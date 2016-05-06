@@ -4,8 +4,8 @@
 #
 #  Author: Nowind
 #  Created: 2014-11-08
-#  Updated: 2015-11-29
-#  Version: 1.6.6
+#  Updated: 2016-05-04
+#  Version: 1.6.7
 #
 #  Change logs:
 #  Version 1.0.0 14/11/08: The initial version.
@@ -29,6 +29,8 @@
 #  Version 1.6.4 15/11/04: Update function combine_vcfs to support user defined combine rows.
 #  Version 1.6.5 15/11/13: Updated: move function get_genome_length to MyPerl::FileIO.
 #  Version 1.6.6 15/11/29: Bug fixed: error abort due to no available infos present for some contigs.
+#  Version 1.6.7 16/05/04: Updated: add support for merge records with same master fields but different
+#                          sub fields in function combine_vcfs.
 
 
 =head1 NAME
@@ -93,7 +95,7 @@ use vars qw(
 @EXPORT    = qw();
 
 
-$MyPerl::Vcf::VERSION = '1.6.6';
+$MyPerl::Vcf::VERSION = '1.6.7';
 
 
 =head1 METHODS
@@ -2705,9 +2707,15 @@ sub combine_vcfs
     my $intersect_tag = $opts->{intersect_tag} ? $opts->{intersect_tag} : 'Intersection';
     
     my @combine_rows  = @{$opts->{combine_rows}} > 0 ? @{$opts->{combine_rows}} : (0, 1);
+    my @compare_rows  = @{$opts->{compare_rows}} > 0 ? @{$opts->{compare_rows}} : ();
     
     ###print STDERR Dumper(@combine_rows);exit;
     
+    my %headers = ();
+       $headers{combine} = 0;
+       $headers{compare} = 0;
+    
+    ## step1: read through primary file
     my $primary_fh   = getInputFilehandle($opts->{vcf});
     my %vcf_records  = ();
     my @vcf_contigs  = ();
@@ -2721,37 +2729,96 @@ sub combine_vcfs
             chomp($vcf_header = $_); next;
         }
         elsif (/^\#\#/ || /^\s+$/) {
+            if (/ID=Combine/) {
+                $headers{combine} = 1;
+            }
+            if (/ID=SDIFF/) {
+                $headers{compare} = 1;
+            }
             print; next;
         }
         
-        my ($CHROM, $POS, @append_keys) = (split /\s+/)[@combine_rows];
+        chomp(my $record = $_);
+        
+        my @fields = (split /\s+/, $record);
+        
+        ## rows for combine, if those rows differ, each will give a unique record in new vcf file
+        my ($CHROM, $POS, @append_keys) = @fields[@combine_rows];
         
         my $append_keys = (@append_keys > 0) ? (join "\t", @append_keys) : "FIELDS";
         
-        chomp($vcf_records{$CHROM}->{$POS}->{$append_keys}->{record} = $_);
+        ## use array to ensure no duplicate records would get removed
+        $vcf_records{$CHROM}->{$POS}->{$append_keys}->{primary} = 1; 
+        push @{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{record}}, $record;
+        
+        ## rows only for compare, records with same combine rows but different compare rows will
+        ## be merge into one single record
+        if (@compare_rows > 0) {
+            push @{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{compare}}, join "\t", @fields[@compare_rows];
+        }
     }
     
-    my $secondary_fh  = getInputFilehandle($opts->{secondary_vcf});
+    my $secondary_fh   = getInputFilehandle($opts->{secondary_vcf});
+    my %merged_records = ();
     while (<$secondary_fh>)
     {
         if (/^\#/ || /^\s+$/) {
             next;
         }
         
-        my ($CHROM, $POS, @append_keys) = (split /\s+/)[@combine_rows];
+        chomp(my $record = $_);
+        
+        my @fields = (split /\s+/, $record);
+        
+        ## rows for combine, if those rows differ, each will give a unique record in new vcf file
+        my ($CHROM, $POS, @append_keys) = @fields[@combine_rows];
         
         my $append_keys = (@append_keys > 0) ? (join "\t", @append_keys) : "FIELDS";
         
-        if (exists $vcf_records{$CHROM}->{$POS}->{$append_keys}->{record}) {
-            $vcf_records{$CHROM}->{$POS}->{$append_keys}->{tag} = $intersect_tag;
+        if ($vcf_records{$CHROM}->{$POS}->{$append_keys}->{primary}) {
+            $merged_records{$CHROM}->{$POS}->{$append_keys} ++;
+            
+            for (my $i=0; $i<@{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{record}}; $i++)
+            {
+                push @{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{tag}}, $intersect_tag;
+                
+                ## rows only for compare, records with same combine rows but different compare rows will
+                ## be merge into one single record
+                if ($vcf_records{$CHROM}->{$POS}->{$append_keys}->{compare}) {
+                    my @primary_cmp    = split "\t", $vcf_records{$CHROM}->{$POS}->{$append_keys}->{compare}->[$i];
+                    my @secondary_cmp  = @fields[@compare_rows];
+                    
+                    my @secondary_diffs = ();
+                    for (my $j=0; $j<@primary_cmp; $j++)
+                    {
+                        if ($primary_cmp[$j] ne $secondary_cmp[$j]) {
+                            push @secondary_diffs, $secondary_cmp[$j];
+                        }
+                    }
+                    
+                    if (@secondary_diffs > 0) {
+                        $vcf_records{$CHROM}->{$POS}->{$append_keys}->{diff}->{$i} = join "|", @secondary_diffs;
+                    }
+                }
+            }
+            
+            if ($merged_records{$CHROM}->{$POS}->{$append_keys} > scalar @{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{record}}) {
+                push @{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{record}}, $record;
+                $merged_records{$CHROM}->{$POS}->{$append_keys} --;
+            }
         }
         else {
-            chomp($vcf_records{$CHROM}->{$POS}->{$append_keys}->{record} = $_);
-            $vcf_records{$CHROM}->{$POS}->{$append_keys}->{tag} = $secondary_tag;
+            push @{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{record}}, $record;
+            push @{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{tag}},    $secondary_tag;
         }
     }
     
-    print STDOUT "##INFO=<ID=Combine,Number=1,Type=String,Description=\"Source VCF for the merged record\">\n";
+    if (!$headers{combine}) {
+        print STDOUT "##INFO=<ID=Combine,Number=1,Type=String,Description=\"Source VCF for the merged record\">\n";
+    }
+    if (!$headers{compare}) {
+        print STDOUT "##INFO=<ID=SDIFF,Number=1,Type=String,Description=\"Different fields in secondary file\">\n";
+    }
     print STDOUT "$opts->{source_line}\n";
     print STDOUT "$vcf_header\n";
     for my $CHROM (@vcf_contigs)
@@ -2760,18 +2827,26 @@ sub combine_vcfs
         {
             for my $POS (sort {$a <=> $b} keys %{$vcf_records{$CHROM}})
             {
-                for my $other_keys (sort keys %{$vcf_records{$CHROM}->{$POS}})
+                for my $append_keys (sort keys %{$vcf_records{$CHROM}->{$POS}})
                 {
-                    my $tag = $vcf_records{$CHROM}->{$POS}->{$other_keys}->{tag} ?
-                              $vcf_records{$CHROM}->{$POS}->{$other_keys}->{tag} : $primary_tag;
-                    
-                    my ($CHROM, $POS, $ID, $REF, $ALT, $QUAL, $FILTER, $INFO, $FORMAT, @Samples)
-                     = (split /\s+/, $vcf_records{$CHROM}->{$POS}->{$other_keys}->{record});
-                    
-                    $INFO .= ";Combine=$tag";
-                    
-                    my $Samples = join "\t", @Samples;
-                    print STDOUT "$CHROM\t$POS\t$ID\t$REF\t$ALT\t$QUAL\t$FILTER\t$INFO\t$FORMAT\t$Samples\n";
+                    for (my $i = 0; $i < @{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{record}}; $i++)
+                    {
+                        my $tag = $vcf_records{$CHROM}->{$POS}->{$append_keys}->{tag} ?
+                                  $vcf_records{$CHROM}->{$POS}->{$append_keys}->{tag}->[$i] : $primary_tag;
+                        
+                        my ($CHROM, $POS, $ID, $REF, $ALT, $QUAL, $FILTER, $INFO, $FORMAT, @Samples)
+                         = (split /\s+/, $vcf_records{$CHROM}->{$POS}->{$append_keys}->{record}->[$i]);
+                        
+                        $INFO .= ";Combine=$tag";
+                        
+                        if ($vcf_records{$CHROM}->{$POS}->{$append_keys}->{diff}->{$i}) {
+                            my $diff_str = $vcf_records{$CHROM}->{$POS}->{$append_keys}->{diff}->{$i};
+                            $INFO .= ";SDIFF=($diff_str)";
+                        }
+                        
+                        my $Samples = join "\t", @Samples;
+                        print STDOUT "$CHROM\t$POS\t$ID\t$REF\t$ALT\t$QUAL\t$FILTER\t$INFO\t$FORMAT\t$Samples\n";
+                    }
                 }
             }
         }
@@ -2784,7 +2859,7 @@ sub combine_vcfs
 
 =head1 VERSION
 
-1.6.6
+1.6.7
 
 =head1 AUTHOR
 
