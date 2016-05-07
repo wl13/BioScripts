@@ -4,13 +4,13 @@
 #
 #   Author: Nowind
 #   Created: 2011-09-18
-#   Updated: 2016-05-06
-#   Version: 2.0.0
+#   Updated: 2016-05-07
+#   Version: 2.0.1
 #
 #   Change logs:
 #   Version 1.0.0 11/09/18: The initial version.
 #   Version 2.0.0 15/05/06: Rewrite all codes.
-
+#   Version 2.0.1 15/05/07: Bug fixed: failed to correctly split each field due to begining blanks.
 
 
 =head1 NAME
@@ -40,7 +40,7 @@ use MyPerl::FileIO qw(:all);
 ################## Main ##################
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '2.0.0';
+my $VERSION = '2.0.1';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 my $SOURCE  = (scalar localtime()) . " Version: $VERSION";
 
@@ -88,8 +88,6 @@ if ($output) {
     open (STDOUT, "> $output") || die $!;
 }
 
-#print STDOUT "##$CMDLINE\n##$SOURCE\n";
-#print STDOUT "#ID\tExon_Num\tTSS_Start\tPolA_Start\tCDS_Len\tGene_Len\n";
 print STDOUT "##gff-version 3\n";
 
 print STDERR "Start parsing $input ... ";
@@ -140,26 +138,15 @@ sub parse_fgenesh
         ##  ORF             - start/end positions where the first complete codon starts and the last codon ends.
         
         if ($infos[$i] =~ /(PolA|TSS)/) {
-            my (undef, $G, $Str, $Feature, $Start, $Score) = (split /\s+/, $infos[$i]);
-            ###$genes{$G}->{Strand}                    = $Str;
-            ###$genes{$G}->{$Feature}->{Start}         = $Start;
-            ###$genes{$G}->{$Feature}->{End}           = '.';
-            ###$genes{$G}->{$Feature}->{Score}         = $Score;
-            ###
-            ###print "$contig_id\tFgenesh\t$Feature\t$Start\t.\t$Score\t$Str\t.\t" .
-            ###      "ID=$contig_id\.fgenesh$G;Parent=$contig_id\.fgenesh$G\n";
+            $infos[$i] =~ s/^\s+//;
+            my ($G, $Str, $Feature, $Start, $Score) = (split /\s+/, $infos[$i]);
+            
             push @{$genes{$G}->{$Feature}}, "$contig_id\tFgenesh\t$Feature\t$Start\t.\t$Score\t$Str\t.\t" .
                                             "ID=$contig_id\.fgenesh$G;Parent=$contig_id\.fgenesh$G";
         }
         elsif ($infos[$i] =~ /CDS/) {
-            my ($G, $Str, $order, $Feature, $Start, $End, $Score) = (split /\s+/, $infos[$i])[1..5,7,8];
-            ###$genes{$G}->{Strand}       = $Str;
-            ###$genes{$G}->{CDS}->{Start} = $Start;
-            ###$genes{$G}->{CDS}->{End}   = $End;
-            ###$genes{$G}->{CDS}->{Score} = $Score;
-            ###
-            ###print "$contig_id\tFgenesh\tCDS\t$Start\t$End\t$Score\t$Str\t.\t" .
-            ###      "ID=$contig_id\.fgenesh$G:cds\_$order;Parent=$contig_id\.fgenesh$G\n";
+            $infos[$i] =~ s/^\s+//;
+            my ($G, $Str, $order, $Feature, $Start, $End, $Score) = (split /\s+/, $infos[$i])[0..4,6,7];
             
             push @{$genes{$G}->{CDS}}, "$contig_id\tFgenesh\tCDS\t$Start\t$End\t$Score\t$Str\t.\t" .
                                        "ID=$contig_id\.fgenesh$G:cds\_$order;Parent=$contig_id\.fgenesh$G";
@@ -181,7 +168,7 @@ sub parse_fgenesh
         my ($mRNA_id, $exon_num, $start, $end, $len, $strand) = ($1, $2, $3, $4, $5, $6);
         
         my $mRNA_feature   = "$contig_id\tFgenesh\tmRNA\t$start\t$end\t.\t$strand\t.\t" .
-                           "ID=$contig_id\.fgenesh$mRNA_id;Name=$contig_id\.fgenesh$mRNA_id;Parent=$contig_id\.fgenesh$mRNA_id";
+                             "ID=$contig_id\.fgenesh$mRNA_id;Name=$contig_id\.fgenesh$mRNA_id;Parent=$contig_id\.fgenesh$mRNA_id";
     
         my $cds_features   = join "\n", @{$genes{$mRNA_id}->{CDS}};
         my $TSS_features   = join "\n", @{$genes{$mRNA_id}->{TSS}}  if $genes{$mRNA_id}->{TSS};
