@@ -55,32 +55,32 @@ However, since the VCF format generated from different caller varies, this scrip
 The clustering function is used to identify genome blocks through certain type of markers. This was done by fisrt search for the reliable seeds (segments with consecutive markers of the same type and pass the criteria, the "seeding" stage), then merge adjacent seeds with same type to form blocks (the "extension" stage), the boundary between blocks of different type was determined according to the markers present between two blocks or use the middle point while no more markers present. 
 The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The genomic landscape of meiotic crossovers and gene conversions in Arabidopsis thaliana. eLife 2, e01426 (2013)", which used for identify recombinat blocks.
   
-    ## the source type could be genotypes (use GT field) or other user defined types (e.g. 
-    ## ancestral status) an example of markers.vcf.gz could be:
-    ## #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  sample
-    ## chr01   161     .       C       A       54.12   .       .       GT:SC   0/0:A/A
-    ## chr01   431     .       C       T       44.2    .       .       GT:SC   0/0:A/A
-    ## chr01   1641    .       G       A       64.15   .       .       GT:SC   1/1:B/B
-    ## chr01   4165    .       C       A       34.31   .       .       GT:SC   1/1:B/B
-    ## ...
+      The source type could be genotypes (use GT field) or other user defined types (e.g. 
+      ancestral status) an example of markers.vcf.gz could be:
+      #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  sample
+      chr01   161     .       C       A       54.12   .       .       GT:SC   0/0:A/A
+      chr01   431     .       C       T       44.2    .       .       GT:SC   0/0:A/A
+      chr01   1641    .       G       A       64.15   .       .       GT:SC   1/1:B/B
+      chr01   4165    .       C       A       34.31   .       .       GT:SC   1/1:B/B
+      ...
   
-* no clustering, just output blocks with consecutive markers with same source type, 
-      
-        vcf_process.pl --vcf markers.vcf.gz --out-blocks --source-tag "SC" > markers.blocks.csv
+*No clustering, just output blocks with consecutive markers with same source type, 
+    
+    vcf_process.pl --vcf markers.vcf.gz --out-blocks --source-tag "SC" > markers.blocks.csv
 
-* clustering
-      
-        vcf_process.pl --vcf markers.vcf.gz --out-blocks --source-tag "SC" --fill-gaps \
-          --min-frag-length 10000 --min-frag-markers 25 > markers.blocks.l10km25.csv
+*Clustering
     
-* use paintGenomeBlocks.pl to visually compare two results
+    vcf_process.pl --vcf markers.vcf.gz --out-blocks --source-tag "SC" --fill-gaps \
+        --min-frag-length 10000 --min-frag-markers 25 > markers.blocks.l10km25.csv
     
-        awk 'BEGIN{OFS="\t";} !/\#/ {$1 = $1"-original"; print;}' markers.blocks.csv | \
-          cat markers.blocks.l10km25.csv - | \
-          paintGenomeBlocks.pl --input - \
-          --width 1600 --height 3000 --thickness 10 --chrom-distance 20 --block-distance 2 \
-          --output markers.blocks.cmp --length reference_genome.fasta.fai \
-          --colors "type1:strong_red2;B:strong_blue2" --sort-blocks sample-original sample --format png
+*Use paintGenomeBlocks.pl to visually compare two results
+    
+    awk 'BEGIN{OFS="\t";} !/\#/ {$1 = $1"-original"; print;}' markers.blocks.csv | \
+        cat markers.blocks.l10km25.csv - | \
+        paintGenomeBlocks.pl --input - \
+        --width 1600 --height 3000 --thickness 10 --chrom-distance 20 --block-distance 2 \
+        --output markers.blocks.cmp --length reference_genome.fasta.fai \
+        --colors "type1:strong_red2;B:strong_blue2" --sort-blocks sample-original sample --format png
     
 
 
