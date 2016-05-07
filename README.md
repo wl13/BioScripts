@@ -65,23 +65,23 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
       ...
   
 * No clustering, just output blocks with consecutive markers with same source type, 
-    
-    vcf_process.pl --vcf markers.vcf.gz --out-blocks --source-tag "SC" > markers.blocks.csv
+
+		vcf_process.pl --vcf markers.vcf.gz --out-blocks --source-tag "SC" > markers.blocks.csv
 
 * Clustering
-    
-    vcf_process.pl --vcf markers.vcf.gz --out-blocks --source-tag "SC" --fill-gaps \
-        --min-frag-length 10000 --min-frag-markers 25 > markers.blocks.l10km25.csv
-    
+
+		vcf_process.pl --vcf markers.vcf.gz --out-blocks --source-tag "SC" --fill-gaps \
+		    --min-frag-length 10000 --min-frag-markers 25 > markers.blocks.l10km25.csv
+
 * Use paintGenomeBlocks.pl to visually compare two results
-    
-    awk 'BEGIN{OFS="\t";} !/\#/ {$1 = $1"-original"; print;}' markers.blocks.csv | \
-        cat markers.blocks.l10km25.csv - | \
-        paintGenomeBlocks.pl --input - \
-        --width 1600 --height 3000 --thickness 10 --chrom-distance 20 --block-distance 2 \
-        --output markers.blocks.cmp --length reference_genome.fasta.fai \
-        --colors "type1:strong_red2;B:strong_blue2" --sort-blocks sample-original sample --format png
-    
+
+		awk 'BEGIN{OFS="\t";} !/\#/ {$1 = $1"-original"; print;}' markers.blocks.csv | \
+		    cat markers.blocks.l10km25.csv - | \
+		    paintGenomeBlocks.pl --input - \
+		    --width 1600 --height 3000 --thickness 10 --chrom-distance 20 --block-distance 2 \
+		    --output markers.blocks.cmp --length reference_genome.fasta.fai \
+		    --colors "type1:strong_red2;B:strong_blue2" --sort-blocks sample-original sample --format png
+
 
 
 
