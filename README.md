@@ -55,14 +55,14 @@ However, since the VCF format generated from different caller varies, this scrip
 The clustering function is used to identify genome blocks through certain type of markers. This was done by fisrt search for the reliable seeds (segments with consecutive markers of the same type and pass the criteria, the "seeding" stage), then merge adjacent seeds with same type to form blocks (the "extension" stage), the boundary between blocks of different type was determined according to the markers present between two blocks or use the middle point while no more markers present. 
 The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The genomic landscape of meiotic crossovers and gene conversions in Arabidopsis thaliana. eLife 2, e01426 (2013)", which used for identify recombinat blocks.
   
-      The source type could be genotypes (use GT field) or other user defined types (e.g. 
-      ancestral status) an example of markers.vcf.gz could be:
-      #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  sample
-      chr01   161     .       C       A       54.12   .       .       GT:SC   0/0:A/A
-      chr01   431     .       C       T       44.2    .       .       GT:SC   0/0:A/A
-      chr01   1641    .       G       A       64.15   .       .       GT:SC   1/1:B/B
-      chr01   4165    .       C       A       34.31   .       .       GT:SC   1/1:B/B
-      ...
+		The source type could be genotypes (use GT field) or other user defined types (e.g. 
+		ancestral status) an example of markers.vcf.gz could be:
+		#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  sample
+		chr01   161     .       C       A       54.12   .       .       GT:SC   0/0:A/A
+		chr01   431     .       C       T       44.2    .       .       GT:SC   0/0:A/A
+		chr01   1641    .       G       A       64.15   .       .       GT:SC   1/1:B/B
+		chr01   4165    .       C       A       34.31   .       .       GT:SC   1/1:B/B
+		...
   
 * No clustering, just output blocks with consecutive markers with same source type, 
 
