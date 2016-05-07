@@ -151,7 +151,7 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 		    --bam sample1.bam sample2.bam --output extracted
 
 
-**Note:** Difference between bam2fasta.pl, sam2fastq.pl and extract_bam_pairs.pl
+**Note:** Difference between **bam2fasta.pl**, **sam2fastq.pl** and **extract_bam_pairs.pl**
 
 		bam2fasta.pl ignore paired infos;
 		sam2fastq.pl convert in pairs;
