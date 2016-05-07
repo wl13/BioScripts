@@ -139,4 +139,6 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 		fgenesh2gff.pl -i fgenesh.txt -o fgenesh.gff
 		sed 's/ no reliable predictions /\/\//' fgenesh.txt | fgenesh2gff.pl -i - -o fgenesh.gff
 
-More to add ...
+
+
+These scripts are free softwares; you can redistribute it and/or modify it under the same terms as Perl itself.
