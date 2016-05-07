@@ -1,0 +1,51 @@
+#!/usr/bin/perl -w
+#
+#   ascii2num.pl -- Convert ASCII codes to numbers.
+#
+#   Author: Nowind
+#   Created: 2010-09-29
+#   Updated: 2015-06-11
+#   Version: 1.0.0
+#
+#   Change logs:
+#   Version 1.0.0 15/06/11: The initial version.
+
+use strict;
+
+use Bio::SeqIO;
+
+
+######################## Main ########################
+
+my $CMDLINE = "perl $0 @ARGV";
+my $VERSION = '1.0.0';
+my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
+
+my ($input) = @ARGV;
+
+
+unless( $input ) {
+    print <<EOF;
+
+$0  -- Convert ASCII codes to numbers.
+
+Version: $VERSION
+
+Usage:   perl $0 <ASCII string>
+
+EOF
+
+    exit(1);
+}
+
+
+my @ascii_codes = split //, $input;
+my @numbers     = ();
+for (@ascii_codes)
+{
+    push @numbers, ord($_);
+}
+
+###print STDOUT join "\t", @ascii_codes, "\n";
+print STDOUT join "\t", @numbers, "\n";
+
