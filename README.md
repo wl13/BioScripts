@@ -64,16 +64,16 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
       chr01   4165    .       C       A       34.31   .       .       GT:SC   1/1:B/B
       ...
   
-*No clustering, just output blocks with consecutive markers with same source type, 
+* No clustering, just output blocks with consecutive markers with same source type, 
     
     vcf_process.pl --vcf markers.vcf.gz --out-blocks --source-tag "SC" > markers.blocks.csv
 
-*Clustering
+* Clustering
     
     vcf_process.pl --vcf markers.vcf.gz --out-blocks --source-tag "SC" --fill-gaps \
         --min-frag-length 10000 --min-frag-markers 25 > markers.blocks.l10km25.csv
     
-*Use paintGenomeBlocks.pl to visually compare two results
+* Use paintGenomeBlocks.pl to visually compare two results
     
     awk 'BEGIN{OFS="\t";} !/\#/ {$1 = $1"-original"; print;}' markers.blocks.csv | \
         cat markers.blocks.l10km25.csv - | \
