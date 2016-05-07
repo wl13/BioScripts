@@ -124,12 +124,20 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 
 
 ### bam2fasta.pl
-> Convert SAM/BAM to FASTA format
+> Convert SAM/BAM to FASTA/Q format
 
 * Extract unmapped reads in BAM file and send it to blast+
 
 		bam2fasta.pl -b example.bam -s "-f 4" | \
             		blastall -p blastn -d genome.fasta -e 1e-70 -a 1 -m 8 -F F -n T -o unmapped.blast.csv
+
+
+### sam2fastq.pl
+> Convert SAM/BAM to FASTQ format
+
+* Extract paired reads
+
+		sam2fastq.pl -i example.sam -o prefix
 
 
 ### extract_bam_pairs.pl
@@ -143,7 +151,13 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 		    --bam sample1.bam sample2.bam --output extracted
 
 
+**Note:** Difference between bam2fasta.pl, sam2fastq.pl and extract_bam_pairs.pl
 
+		bam2fasta.pl ignore paired infos;
+		sam2fastq.pl convert in pairs;
+		extract_bam_pairs.pl extract all reads overlap certain regions and search for its pairs.
+
+They can be actually integrated, but why 3 scripts? Because I forget the previous one when I started write a new one, and finally I got three ...
 
 ## Calculation
 
