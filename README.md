@@ -40,9 +40,7 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 
 * Convert Sanger encoding to Illumina 1.5+
 
-		zcat reads.fq.gz | \
-		    convert_fastq_quality.pl -i - -c sanger2illumina | gzip -c \
-		    > reads.converted.fq.gz
+		zcat reads.fq.gz | convert_fastq_quality.pl -i - -c sanger2illumina | gzip -c > reads.converted.fq.gz
 
 
 ### vcf_process.pl
