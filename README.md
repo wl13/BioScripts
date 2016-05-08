@@ -17,6 +17,12 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 ### fasta_process.pl
 > Query, extract and processing fasta sequences.
 
+**Note:** some options could be combined but have priority orders, for example extract and sort could be run in a single step, while sort and extract will not work; break it into two or more steps under these situations.
+
+
+
+#### Extract sequences
+
 * Query a single gene
 
 		echo "${gene_id}" | fasta_process.pl --fasta all.seq --query - --rows 0 > gene.fa
@@ -41,6 +47,8 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 		    fasta_process.pl --query - --fasta genome.fasta --rows 0 1 2 3 4 5 --subset 1 2 \
 		    --replace 3,4,5 > vars.ex75.replaced.fas
 
+#### Do statistics of sequences
+
 * Count triplet contents
 
 		fasta_process.pl --fasta genome.fasta --count-nucl triplet > triplets.csv
@@ -58,6 +66,8 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 		    --rows 0 1 2 --subset 1 2 --out-format tabular | sed 's/\_/\t/g' > nt2-1.csv
 
 
+#### Sequence manipulation
+
 * Translate nucleotides to proteins and remove final "*"
 
 		fasta_process.pl --fasta cds.fasta --translate --wordwrap 60 | sed 's/\*$//' > protein.fasta
@@ -72,6 +82,12 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 
 		cat *.fasta | fasta_process.pl --fasta - --sort-by-list orders.list > sorted.fasta
 
+* Reverse complement sequences
+
+		fasta_process.pl --fasta example.fasta --reverse --complement > rc.fasta
+
+#### Filtering sequences
+
 * Filtering fasta file by length
 
 		fasta_process.pl --fasta example.fasta --lower 100 --upper 2000 > len100_2000.fasta
@@ -80,8 +96,6 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 
 		fasta_process.pl --fasta example.fasta --match "scaffold|contig" > chromosome.fasta
 
-
-**Note:** some options could be combined but have priority orders, for example extract and sort could be run in a single step, while sort and extract will not work; break it into two or more steps under these situations.
 
 
 
@@ -125,6 +139,11 @@ However, since the VCF format generated from different caller varies, this scrip
 			--min-hom-ref 5 --min-het-ref 4 --max-hom-missing 5 > flt.vcf
 
 
+* Screen out rare alleles (allele with sample frequency less than the specified value)
+
+		vcf_process.pl --vcf example.vcf.gz --rare-only 3 > rare.vcf
+
+
 **Note:** some filtering criteria have priority orders, do check the results after filtering!
 
 
@@ -148,7 +167,7 @@ vcf_process.pl use the non-reference allele depth ratio (NRADR, reads support re
 
 
 
-#### Collect statistics and metrics
+#### Collecting statistics and metrics of variants
 
 * Collect variants metrics, mainly designed for GATK callers
 
@@ -182,12 +201,25 @@ vcf_process.pl use the non-reference allele depth ratio (NRADR, reads support re
 
 		vcf_process.pl --vcf snp.vcf.gz --stat-var-dist --source-tag GT > snp.dist.csv
 
+* Summary of results generated from GATK DiagnoseTargets (https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_diagnostics_diagnosetargets_DiagnoseTargets.php)
+
+		vcf_process.pl --vcf diagnose.vcf --sum-diagnose > diagnose.stats.csv
+
+* Get variant sequence context (experimental)
+
+		vcf_process.pl --vcf snp.vcf.gz --check-context --fasta genome.fasta > snp.context.vcf
+
+**Notes for context checking:**
+
+	1) Only bi-allelic loci is supported while analysis sequence context, multi-alleles need to be 
+	breaked first;
+	2) Extension here is different for SNPs and INDELs, e.g. upstream 5bp and downstream 5bp for SNPs, 
+	while only downstream 10bp for INDELs, thus the INDELs are assumed to be already left aligned
 
 
+#### Clustering variants
 
-
-#### Use vcf_process.pl to clustering markers (genetically linked regions)
-
+Use vcf_process.pl to clustering markers (genetically linked regions).
 The clustering function is used to identify genome blocks through certain type of markers. This was done by fisrt search for the reliable seeds (segments with consecutive markers of the same type and pass the criteria, the "seeding" stage), then merge adjacent seeds with same type to form blocks (the "extension" stage), the boundary between blocks of different type was determined according to the markers present between two blocks or use the middle point while no more markers present. 
 The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The genomic landscape of meiotic crossovers and gene conversions in Arabidopsis thaliana. eLife 2, e01426 (2013)", which used for identify recombinat blocks.
 
@@ -219,6 +251,23 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 		    --colors "type1:strong_red2;B:strong_blue2" --sort-blocks sample-original sample --format png
 
 
+#### Combining vcf files
+
+
+* Combine two vcf files according to the "CHROM" and "POS" fields
+
+		vcf_process.pl --vcf hc.vcf --secondary-vcf ug.vcf --combine-rows 0 1 \
+		    --primary-tag HC --secondary-tag UG --intersect-tag "UG+HC" > combined.vcf
+
+* Combine two vcf files according to the "CHROM", "POS" and "ALT" fields, if the "ALT" field differ, there will be two records in combined vcf file
+
+		vcf_process.pl --vcf hc.vcf --secondary-vcf ug.vcf --combine-rows 0 1 4 \
+		    --primary-tag HC --secondary-tag UG --intersect-tag "UG+HC" > combined.vcf
+
+* Combine two vcf files according to the "CHROM" and "POS" fields, but if the "ALT" field differ, write the "ALT" info of secondary file into "SDIFF" field
+
+		vcf_process.pl --vcf hc.vcf --secondary-vcf ug.vcf --combine-rows 0 1 --compare-row 4 \
+		    --primary-tag HC --secondary-tag UG --intersect-tag "UG+HC" > combined.vcf
 
 
 ### fgenesh2gff.pl
