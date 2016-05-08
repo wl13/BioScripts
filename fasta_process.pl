@@ -5,14 +5,16 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-31
-#   Updated: 2016-04-06
-#   Version: 1.1.2
+#   Updated: 2016-05-08
+#   Version: 2.0.0
 #
 #   Change logs:
 #   Version 1.0.0 14/11/10: The initial version.
 #   Version 1.1.0 15/12/24: Add functions to count sequence context.
 #   Version 1.1.1 16/03/10: Update: add support for multiple fasta files and fasta records from pipeline.
 #   Version 1.1.2 16/04/06: Bug fixed: direct exit if no entrance were extracted.
+#   Version 2.0.0 16/05/08: Update: add function to translate sequences; add function to split fasta file;
+#                           support more output format; revise some descriptions.
 
 
 
@@ -40,32 +42,42 @@ use File::Find::Rule;
 use File::Basename;
 
 use MyPerl::FileIO qw(:all);
+use MyPerl::Convert qw(:all);
 
 ################################# Main ###############################
 
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '1.1.2';
+my $VERSION = '2.0.0';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 my $SOURCE  = (scalar localtime()) . " Version: $VERSION";
 
-my $delimiter  = '\s+';
-my $out_format = 'fasta';
-my $out_order  = 'input';
+my $delimiter    = '\s+';
+my $out_format   = 'fasta';
+my $out_order    = 'input';
+my $data_type    = 'DNA';
+my $indel_symbol = '-';
 my $no_found_order = 'top';
-my (@fasta_files, $output, $word_wrap,
+my (@fasta_files, $output, $word_wrap, $out_dir,
     $query_file,  @query_rows, $match_str, @sub_set, $substitution,
     $min_length, $max_length, $reverse_seq, $complement_seq,
-    $uppercase_seq, $lowercase_seq, $count_nucl);
+    $uppercase_seq, $lowercase_seq, $count_nucl, $translate, $seperate, $numeric,
+    $split_fasta, $new_id, $id_as_folder, $omit_id, $prefix, $suffix,);
 GetOptions(
             "fasta=s{,}"       => \@fasta_files,
             "output=s"         => \$output,
-            
+
             "query=s"          => \$query_file,
             "rows=i{,}"        => \@query_rows,
             
             "out-format=s"     => \$out_format,
             "out-order=s"      => \$out_order,
+            
+            "numeric"          => \$numeric,
+            "seperate"         => \$seperate,
+            
+            "data-type=s"      => \$data_type,
+            "symbol=s"         => \$indel_symbol,
             
             "no-found-order"   => \$no_found_order,
             
@@ -84,6 +96,19 @@ GetOptions(
             "count-nucl=s"     => \$count_nucl,
             
             "replace=s"        => \$substitution,
+            
+            "translate"        => \$translate,
+            
+            "split"            => \$split_fasta,
+            
+            "outdir=s"         => \$out_dir,
+            "prefix=s"         => \$prefix,
+            "suffix=s"         => \$suffix,
+            
+            "new-id=s"         => \$new_id,
+            
+            "id-as-folder"     => \$id_as_folder,
+            "omit-id"          => \$omit_id,
            );
 
 unless( @fasta_files > 0 ) {
@@ -107,6 +132,7 @@ Input/Output Options:
         
         "fasta":    standard fasta format;
         "tabular":  tabulated results with id and sequence in each line,
+        "mega":     mega format
         "seq":      output sequences only
         
         [default: fasta]
@@ -143,7 +169,39 @@ Manipulation Options:
     --complement
         complement sequences before output
 
-        
+    --translate
+        translate nucleotides to proteins
+    
+    --numeric
+        convert nucleotide bases to numbers according to the following
+        conversions:
+        A:1, T:2, G:3, C:4, -:5, N*:6
+        *N stands for all unkown bases, used for tabular output
+
+    --seperate
+        seperate characters using comma, used for tabular output
+
+
+    --outdir     <filename>
+        output directory while splitting fasta file, default to current
+        working directory
+    
+    --prefix     <string>
+        prefix of output filename after splitting
+    --suffix     <string>
+        suffix of output filename after splitting
+    --new-id     <string>
+        use a new id to replace original id in all output files after
+        splitting
+    
+    --id-as-folder
+        use original sequence id as folder name and put each splitted file
+        in related folder
+    --omit-id
+        omit ids in output filename, if this option is specified, at least
+        one of the "--prefix" or "--suffix" options should be setted
+
+
 Extracting Options:
  
     --query  <filename>
@@ -161,15 +219,7 @@ Extracting Options:
         specify a delimiter while reading input files, such as ",",
         "\\t", multiple delimiters can be set such as ",|\\t"
         [default: "\\s+"]
-    --match     <string>
-        only considering lines matching a pattern, support perl
-        regular expression
 
-    --lower     <int>
-        only output sequences with length above this value
-    --upper     <int>
-        only output sequences with length below this value
-        
     --replace <string>
         replace reference nucleotide with the specified nucleotide
         at specified position for each sequence in the format:
@@ -177,11 +227,38 @@ Extracting Options:
         "row of position,row of reference nucleotides,row of substitution
         nucleotides"
 
+
+Filtering Options:
+    
+    --match     <string>
+        only considering lines matching a pattern, support perl
+        regular expression
+    
+    --lower     <int>
+        only output sequences with length above this value
+    --upper     <int>
+        only output sequences with length below this value
+
+
+ 
 Other options:
 
     --count-nucl
         count "dinucleotide" or "triplet" nucleotide context
+
+    
+    --data-type  <string>
+        specify data type of input fasta file if output in mega format,
+        can be set to DNA or Protein, default: DNA
+    --symbol     <string>
+        symbol for indels used for mega output, default: "-"
         
+
+   *Note: some options have orders, for example you can first extract then
+    sort the extracted sequences, while the opposite will not work; simply
+    break it into two steps by first sort, then extract. Some options could
+    be combined, some could not.
+
 EOF
 
     exit(1);
@@ -192,11 +269,19 @@ $|++;
 
 print STDERR "# $0 v$VERSION\n# " . (scalar localtime()) . "\n";
 
-if ($output) {
+if ($split_fasta) {
+    unless ( $out_dir ) { $out_dir = '.'; }
+    unless( -e $out_dir ) { mkdir $out_dir; }
+    
+    $out_dir =~ s/\/$//g;
+}
+elsif ($output) {
     open (STDOUT, "> $output") || die $!;
 }
 
 unless(@query_rows){ @query_rows = (0) };
+
+
 
 
 ## read into all sequences
@@ -211,16 +296,23 @@ for my $in (@fasta_files)
 }
 
 ## convert array to hash
-my %input_seqs = ();
+my %input_seqs  = ();
 for (my $i=0; $i<@input_ids; $i++)
 {
-    $input_seqs{$input_ids[$i]} = $input_seqs[$i];
+    $input_seqs{$input_ids[$i]}  = $input_seqs[$i];
 }
 
 
+##
+## copy input to output
+##
 my @output_ids  = @input_ids;
 my @output_seqs = @input_seqs;
 
+
+##
+## query sequences
+##
 if (defined $query_file) {
     print STDERR ">> Start querying $query_file ... ";
     my %query_records = ();
@@ -228,6 +320,7 @@ if (defined $query_file) {
     print STDERR "done!\n";
     
     if($query_records{id}) {
+        ## update the output arrays
         @output_ids  = @{$query_records{id}};
         @output_seqs = @{$query_records{seq}};
     }
@@ -236,6 +329,24 @@ if (defined $query_file) {
     }
 
 }
+
+
+##
+## translate sequences
+##
+if ($translate) {
+    print STDERR "\r>> Start translating sequences ... ";
+    my @translated_seqs = ();
+    for (my $i=0; $i<@output_ids; $i++)
+    {
+        push @translated_seqs, Translate($output_seqs[$i]);
+    }
+    
+    @output_seqs = @translated_seqs;
+    print STDERR "done!\n";
+}
+
+
 
 ##
 ## sort output results
@@ -248,10 +359,12 @@ if ($out_order ne 'input') {
     $sort_by_list = $sort_flag;
     
     if ($sort_flag) {
+        ## store the sorted ids and sequences in a new hash
         $output_seqs{$output_ids[$_]} = $output_seqs[$_] for (0..$#output_ids);
         @output_ids   = @{$ra_sorted};
     }
     else {
+        ## only update output arrays
         @output_ids   = @output_ids[@{$ra_sorted}];
         @output_seqs  = @output_seqs[@{$ra_sorted}];
     }
@@ -271,6 +384,11 @@ if ($count_nucl) {
     }
 }
 
+if ($out_format eq 'mega') {
+    print STDOUT "#mega\n";
+    print STDOUT "!Title ;\n";
+    print STDOUT "!Format DataType=$data_type indel=$indel_symbol;\n\n";
+}
 
 print STDERR ">> Start writing results ... ";
 for (my $i=0; $i < @output_ids; $i++)
@@ -278,13 +396,13 @@ for (my $i=0; $i < @output_ids; $i++)
     my $out_id = $output_ids[$i];
     
     if ($sort_by_list) {
-        unless($input_seqs{$out_id}) {
+        unless($output_seqs{$out_id}) {
             print STDERR "Error: $out_id not found!\n";
             exit(2);
         }
     }
     
-    my $seq    = $sort_by_list ? $input_seqs{$out_id} : $output_seqs[$i];
+    my $seq = $sort_by_list ? $output_seqs{$out_id} : $output_seqs[$i];
     
     next if ($min_length && (length $seq) < $min_length);
     next if ($max_length && (length $seq) > $max_length);
@@ -296,7 +414,39 @@ for (my $i=0; $i < @output_ids; $i++)
         $seq =~ tr/ATGCatgc/TACGtacg/;
     }
     
-    if ($count_nucl) {
+    if ($split_fasta) {
+        my $out_name  = $prefix ? $prefix . $out_id : $out_id;
+           $out_name .= $suffix if ($suffix);
+           
+        if ($omit_id) {
+            if ($prefix && $suffix) {
+                $out_name = $prefix . $suffix;
+            }
+            elsif ($prefix) {
+                $out_name = $prefix;
+            }
+            elsif ($suffix) {
+                $out_name = $suffix;
+            }
+            else {
+                print STDERR "Error: no valid output filename specified!\n";
+                exit(2);
+            }
+        }
+        
+        my $out_id  = $new_id ? $new_id : $out_id;
+        
+        if ($id_as_folder) {
+            $out_dir = "$out_dir\/$out_id";
+            
+            unless(-e $out_dir){ mkdir $out_dir };
+        }
+        
+        open (my $ot, "> $out_dir\/$out_name") || die $!;
+        print $ot format_fasta_SEQs($out_id, \$seq, $word_wrap);
+        
+    }
+    elsif ($count_nucl) {
         if ($count_nucl eq 'triplet') {
             count_triplets($out_id, \$seq);
         }
@@ -307,8 +457,22 @@ for (my $i=0; $i < @output_ids; $i++)
     elsif ($out_format eq 'fasta') {
         print STDOUT format_fasta_SEQs($out_id, \$seq, $word_wrap);
     }
-    elsif ($out_format eq 'tabular') {
-        print STDOUT "$out_id\t$seq\n";
+    elsif ($out_format eq 'tabular') { ## write in tabular format
+        my $out_str = $seq;
+        
+        if ($numeric) {                ## use numbers instead of nucleotides
+            $out_str =~ tr/ATGC\-N?*ZM/123456/;
+        }
+        
+        $out_str = $seperate ? (join ',', (split //, $out_str)) : $out_str;
+        
+        print STDOUT "$out_id\t$out_str\n";
+    }
+    elsif ($out_format eq 'mega') {
+        my $formated_seq = format_fasta_SEQs($out_id, \$seq, $word_wrap);
+           $formated_seq =~ s/\>/#/g;
+        
+        print STDOUT "$formated_seq\n";
     }
     elsif ($out_format eq 'seq') {
         print STDOUT "$seq\n";
@@ -586,3 +750,7 @@ sub count_triplets
         print STDOUT "$id\t$codon\t$counts\n";
     }
 }
+
+
+
+
