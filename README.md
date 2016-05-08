@@ -33,8 +33,58 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 * Extract multiple sequences from the genome
 
 		fasta_process.pl --rows 0 1 2 --query regions.list --fasta genome.fasta --subset 1 2 > query_regions.fas
-    
-    
+
+* Extract flanking sequence of each variant site and replace the nucleotide at the variant site with the alternative allele
+
+		perl -ne 'next if (/\#/); my @line = split /\t/; my $ex_start = $line[1]-75; my $ex_end = $line[1]+75;
+		    print "$line[0]\t$ex_start\t$ex_end\t76\t$line[3]\t$line[4]\n";' example.vcf | \
+		    fasta_process.pl --query - --fasta genome.fasta --rows 0 1 2 3 4 5 --subset 1 2 \
+		    --replace 3,4,5 > vars.ex75.replaced.fas
+
+* Count triplet contents
+
+		fasta_process.pl --fasta genome.fasta --count-nucl triplet > triplets.csv
+
+* Count triplet contents in query sequences
+
+		fasta_process.pl --fasta genome.fasta --query query.regions \
+		    --rows 1 3 4 0 2 --subset 3 4 --count-nucl triplet > query.triplets.csv
+
+
+* Extract di/tir-nucleotide contents in tabular format
+
+		awk 'BEGIN{OFS="\t"} !/\#/ {print $1,$2-1,$2;}' example.vcf | \
+		    fasta_process.pl --query - --fasta genome.fasta \
+		    --rows 0 1 2 --subset 1 2 --out-format tabular | sed 's/\_/\t/g' > nt2-1.csv
+
+
+* Translate nucleotides to proteins and remove final "*"
+
+		fasta_process.pl --fasta cds.fasta --translate --wordwrap 60 | sed 's/\*$//' > protein.fasta
+
+
+* Split multiple-sequences file into multiple single-sequence files
+
+		fasta_process.pl --fasta multiple.fasta --split
+
+
+* Sort fasta file by a user defined order, fasta file could also given from a pipe
+
+		cat *.fasta | fasta_process.pl --fasta - --sort-by-list orders.list > sorted.fasta
+
+* Filtering fasta file by length
+
+		fasta_process.pl --fasta example.fasta --lower 100 --upper 2000 > len100_2000.fasta
+
+* Filtering fasta file by id
+
+		fasta_process.pl --fasta example.fasta --match "scaffold|contig" > chromosome.fasta
+
+
+**Note:** some options could be combined but have priority orders, for example extract and sort could be run in a single step, while sort and extract will not work; break it into two or more steps under these situations.
+
+
+
 ### convert_fastq_quality.pl
 > Convert fastq encodings 
 
@@ -48,6 +98,92 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 
 This script does quite a lot things, including filtering, combining, clustering and etc., seems I put too many functions here ...
 However, since the VCF format generated from different caller varies, this script was manily tailored for vcf file generated from GATK (UnifiedGenotyper or HaplotypeCaller, http://www.broadinstitute.org/gatk/), some functions require the AD (allele depth) field, so it may not perform very well for VCF files generated from other caller.
+
+#### Filtering variants
+
+* Filtering by depth, this only mark samples with depth failed this criteria as missing, but will not filter the whole locus
+
+		vcf_process.pl --vcf example.vcf.gz -min-sample-depth 10 --max-sample-depth 80 > depth_flt.vcf
+
+* Filtering by depth and number of missing allele calls, first check depth, then count all missing calls include those failed the depth criteria
+
+		vcf_process.pl --vcf example.vcf.gz -min-sample-depth 10 --max-sample-depth 80 --max-missing 8 > flt.vcf
+
+* Specify the depth for each sample in a file, the overall criteria will still be effective if some sample were not specified
+
+		vcf_process.pl --vcf example.vcf.gz -min-sample-depth 10 --max-sample-depth 80 \
+			--depth-file sample_depth.txt > depth_flt.vcf
+
+
+* Specify some samples as natural homozygous sample (e.g. inbred lines), others would be treated as heterozygous, filtering heterozygous sites in homozygous samples (denoted as "pseudo-heterozygosity" here, mostly raised from mapping errors due to duplications)
+
+		vcf_process.pl --vcf example.vcf.gz --homo-samples sample1 sample2 --max-pseudo-het 0 > flt.vcf
+
+* Filtering by reference/non-reference sample counts, distinguish homozygous and heterozygous samples
+
+		vcf_process.pl --vcf example.vcf.gz --homo-samples sample1 sample2 \
+			--min-hom-ref 5 --min-het-ref 4 --max-hom-missing 5 > flt.vcf
+
+
+**Note:** some filtering criteria have priority orders, do check the results after filtering!
+
+
+#### Genotype manipulation
+
+vcf_process.pl use the non-reference allele depth ratio (NRADR, reads support reference allele / all reads covered) to test whether the initial genotyping was really accurate, genotypes failed these criteria could be re-genotyped or set as missing, require AD fields (also add support for NR,NV tags generated from caller like Platypus, but less tested)
+
+* For homozygous samples, no heterozygous genotypes should be expected, NRADR should be near zero (reference homozygous) or near 100% (alternative homozygous), considering the sequencing errors, a conserved range could be 5%~95% for high coverage data (above 20x)
+
+		vcf_process.pl --vcf hc.vcf.gz --default-sample-type hom --regenotype-hom 0.05 \
+			--gt-diff-as-missing > genotype.flt.vcf 
+
+* For heterozygous samples, we need two values, one for homozygous genotypes (same as used for homozygous samples), another for heterozygous genotypes (usually expect 50%, newly arised mutations could vary), 30%~70% maybe ok for a reliable heterozgyous call
+
+		vcf_process.pl --vcf hc.vcf.gz --regenotype-het 0.05,0.3 --gt-diff-as-missing > genotype.flt.vcf 
+
+* Contain both homozygous and heterozygous samples
+
+		vcf_process.pl --vcf hc.vcf.gz --homo-samples sample1 sample2 --regenotype-hom 0.05 \
+			--regenotype-het 0.05,0.3 --gt-diff-as-missing > genotype.flt.vcf 
+
+
+
+#### Collect statistics and metrics
+
+* Collect variants metrics, mainly designed for GATK callers
+
+		vcf_process.pl --vcf hc.vcf.gz --out-metrics \
+		    --metrics DP MQ MQ0 BaseQRankSum ClippingRankSum MQRankSum ReadPosRankSum InbreedingCoeff FS SOR \
+		    > hc.metrics.csv
+
+* Metrics after filtering
+
+		vcf_process.pl --vcf hc.vcf.gz \
+		    --quality 50 --min-alleles 2 --max-alleles 2 --min-sample-depth 10 --max-missing 14 | \
+		    vcf_process.pl --vcf - --out-metrics \
+		    --metrics DP MQ MQ0 BaseQRankSum ClippingRankSum MQRankSum ReadPosRankSum InbreedingCoeff FS SOR \
+		    > hc.flt.metrics.csv
+
+* Collect genotype infos, require the AD field
+
+		vcf_process.pl --vcf hc.vcf.gz \
+		    --quality 50 --stats-only --out-genotype-stats --ref-depth --var-type snp > hc.snp.gts.csv
+
+* Generate statistics for each locus
+
+		vcf_process.pl --vcf snp.vcf.gz --stats-only --out-locus-stats > snp.locus_stats.csv
+
+* Count base changes for all bi-allelic heterozygous sites
+
+		vcf_process.pl --vcf example.vcf.gz \
+		    --min-alleles 2 --max-alleles 2 --base-changes --GT-types "0/1" > het.changes.csv
+
+* Generate statistics for distances between adjacent variants
+
+		vcf_process.pl --vcf snp.vcf.gz --stat-var-dist --source-tag GT > snp.dist.csv
+
+
+
 
 
 #### Use vcf_process.pl to clustering markers (genetically linked regions)
@@ -113,10 +249,6 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 > Convert gff to tabular format
 
 
-### fasta2tabular.pl
-> Convert fasta to tabular format
-
-
 ### intervals2bed
 > Convert intervals to bed format, e.g. chr01:1-1000 -> chr01	0	1000
 
@@ -162,13 +294,6 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 
 They can be actually integrated, but why 3 scripts? Because I forget the previous one when I started write a new one, and finally I got three ...
 
-
-### transNt2AA.pl
-> Simply translate nucleotide to proteins, require BioPerl
-
-* Usage
-
-		transNt2AA.pl cds.fasta protein.fasta
 
 
 ## Calculation
