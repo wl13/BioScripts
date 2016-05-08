@@ -5,7 +5,7 @@ Scripts for bioinformatics processing and analysis. Supplement to other more use
 
 
 ## INSTALL
-Add "MyPerl" folder to PERL5LIB, something like "export PERL5LIB=$HOME/folder_contain_MyPerl", or copy it to a pre-exist folder like "perl/site/lib", or just copy it to the same folder where you run the script
+Add the PATH of "MyPerl" folder to PERL5LIB environment, something like "export PERL5LIB=$HOME/folder_contain_MyPerl", or copy it to a pre-exist folder like "perl/site/lib", or just copy it to the same folder where you run the script
 
 
 ## USAGE
@@ -161,6 +161,15 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 		extract_bam_pairs.pl extract all reads overlap certain regions and search for its pairs.
 
 They can be actually integrated, but why 3 scripts? Because I forget the previous one when I started write a new one, and finally I got three ...
+
+
+### transNt2AA.pl
+> Simply translate nucleotide to proteins, require BioPerl
+
+* Usage
+
+		transNt2AA.pl cds.fasta protein.fasta
+
 
 ## Calculation
 
