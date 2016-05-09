@@ -70,7 +70,8 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 
 * Translate nucleotides to proteins and remove final "*"
 
-		fasta_process.pl --fasta cds.fasta --translate --wordwrap 60 | sed 's/\*$//' > protein.fasta
+		fasta_process.pl --fasta cds.fasta --translate --wordwrap 60 | \
+			perl -ne 's/\*$//; next if(/^\s+$/); print;' > protein.fasta
 
 
 * Split multiple-sequences file into multiple single-sequence files
@@ -80,7 +81,7 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 
 * Sort fasta file by a user defined order, fasta file could also given from a pipe
 
-		cat *.fasta | fasta_process.pl --fasta - --sort-by-list orders.list > sorted.fasta
+		cat *.fasta | fasta_process.pl --fasta - --out-order orders.list > sorted.fasta
 
 * Reverse complement sequences
 
