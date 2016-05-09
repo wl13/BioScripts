@@ -5,17 +5,17 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-31
-#   Updated: 2016-05-08
-#   Version: 2.0.0
+#   Updated: 2016-05-09
+#   Version: 2.0.1
 #
 #   Change logs:
 #   Version 1.0.0 14/11/10: The initial version.
 #   Version 1.1.0 15/12/24: Add functions to count sequence context.
-#   Version 1.1.1 16/03/10: Update: add support for multiple fasta files and fasta records from pipeline.
+#   Version 1.1.1 16/03/10: Updated: add support for multiple fasta files and fasta records from pipeline.
 #   Version 1.1.2 16/04/06: Bug fixed: direct exit if no entrance were extracted.
-#   Version 2.0.0 16/05/08: Update: add function to translate sequences; add function to split fasta file;
+#   Version 2.0.0 16/05/08: Updated: add function to translate sequences; add function to split fasta file;
 #                           support more output format; revise some descriptions.
-
+#   Version 2.0.1 16/05/09: Bug fixed: remove unused option "--sort-by-list".
 
 
 =head1 NAME
@@ -48,7 +48,7 @@ use MyPerl::Convert qw(:all);
 
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '2.0.0';
+my $VERSION = '2.0.1';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 my $SOURCE  = (scalar localtime()) . " Version: $VERSION";
 
@@ -159,11 +159,6 @@ Input/Output Options:
 
 Manipulation Options:
 
-    --sort-by-list  <filename>
-        sort sequences by the order of ids in another file, the file contains
-        sequence ids same as the fasta file, one id per line, otherwise will
-        use numeric sort by default
-        
     --reverse
         reverse sequences before output        
     --complement
