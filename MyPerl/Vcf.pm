@@ -4,8 +4,8 @@
 #
 #  Author: Nowind
 #  Created: 2014-11-08
-#  Updated: 2016-05-04
-#  Version: 1.6.7
+#  Updated: 2016-05-16
+#  Version: 1.6.8
 #
 #  Change logs:
 #  Version 1.0.0 14/11/08: The initial version.
@@ -31,6 +31,10 @@
 #  Version 1.6.6 15/11/29: Bug fixed: error abort due to no available infos present for some contigs.
 #  Version 1.6.7 16/05/04: Updated: add support for merge records with same master fields but different
 #                          sub fields in function combine_vcfs.
+#  Version 1.6.8 16/05/16: Bug fixed in function combine_vcfs:
+#                               1) uninitialized value while combine duplicate records;
+#                               2) results lost if contig infos missed or incomplete in vcf header
+
 
 
 =head1 NAME
@@ -95,7 +99,7 @@ use vars qw(
 @EXPORT    = qw();
 
 
-$MyPerl::Vcf::VERSION = '1.6.7';
+$MyPerl::Vcf::VERSION = '1.6.8';
 
 
 =head1 METHODS
@@ -2720,13 +2724,16 @@ sub combine_vcfs
     my %vcf_records  = ();
     my @vcf_contigs  = ();
     my $vcf_header   = '';
+    my @vcf_header   = ();
     while (<$primary_fh>)
     {
         if (/^\#\#contig=<ID=(.*?),length=\d+>/) {
             push @vcf_contigs, $1; print; next;
         }
         elsif (/^\#CHROM/) {
-            chomp($vcf_header = $_); next;
+            chomp($vcf_header = $_);
+            @vcf_header = split /\s+/, $vcf_header;
+            next;
         }
         elsif (/^\#\#/ || /^\s+$/) {
             if (/ID=Combine/) {
@@ -2784,7 +2791,7 @@ sub combine_vcfs
                 
                 ## rows only for compare, records with same combine rows but different compare rows will
                 ## be merge into one single record
-                if ($vcf_records{$CHROM}->{$POS}->{$append_keys}->{compare}) {
+                if ($vcf_records{$CHROM}->{$POS}->{$append_keys}->{compare}->[$i]) {
                     my @primary_cmp    = split "\t", $vcf_records{$CHROM}->{$POS}->{$append_keys}->{compare}->[$i];
                     my @secondary_cmp  = @fields[@compare_rows];
                     
@@ -2792,7 +2799,7 @@ sub combine_vcfs
                     for (my $j=0; $j<@primary_cmp; $j++)
                     {
                         if ($primary_cmp[$j] ne $secondary_cmp[$j]) {
-                            push @secondary_diffs, $secondary_cmp[$j];
+                            push @secondary_diffs, "$vcf_header[$compare_rows[$j]]:$secondary_cmp[$j]";
                         }
                     }
                     
@@ -2804,13 +2811,18 @@ sub combine_vcfs
             
             if ($merged_records{$CHROM}->{$POS}->{$append_keys} > scalar @{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{record}}) {
                 push @{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{record}}, $record;
-                $merged_records{$CHROM}->{$POS}->{$append_keys} --;
             }
         }
         else {
             push @{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{record}}, $record;
             push @{$vcf_records{$CHROM}->{$POS}->{$append_keys}->{tag}},    $secondary_tag;
         }
+    }
+    
+    ## vcf contigs info miss or imcomplete
+    my @present_contigs = sort (keys %vcf_records);
+    if (scalar @vcf_contigs < scalar @present_contigs) {
+        @vcf_contigs = @present_contigs;
     }
     
     if (!$headers{combine}) {
@@ -2837,12 +2849,12 @@ sub combine_vcfs
                         my ($CHROM, $POS, $ID, $REF, $ALT, $QUAL, $FILTER, $INFO, $FORMAT, @Samples)
                          = (split /\s+/, $vcf_records{$CHROM}->{$POS}->{$append_keys}->{record}->[$i]);
                         
-                        $INFO .= ";Combine=$tag";
-                        
                         if ($vcf_records{$CHROM}->{$POS}->{$append_keys}->{diff}->{$i}) {
                             my $diff_str = $vcf_records{$CHROM}->{$POS}->{$append_keys}->{diff}->{$i};
-                            $INFO .= ";SDIFF=($diff_str)";
+                            $tag .= "(SDIFF=$diff_str)";
                         }
+                        
+                        $INFO .= ";Combine=$tag";
                         
                         my $Samples = join "\t", @Samples;
                         print STDOUT "$CHROM\t$POS\t$ID\t$REF\t$ALT\t$QUAL\t$FILTER\t$INFO\t$FORMAT\t$Samples\n";
@@ -2859,7 +2871,7 @@ sub combine_vcfs
 
 =head1 VERSION
 
-1.6.7
+1.6.8
 
 =head1 AUTHOR
 
