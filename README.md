@@ -24,7 +24,7 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 
 
 
-#### Extract sequences
+##### Extract sequences
 
 * Query a single gene
 
@@ -50,7 +50,7 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 		    fasta_process.pl --query - --fasta genome.fasta --rows 0 1 2 3 4 5 --subset 1 2 \
 		    --replace 3,4,5 > vars.ex75.replaced.fas
 
-#### Do statistics of sequences
+##### Do statistics of sequences
 
 * Count triplet contents
 
@@ -69,7 +69,7 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 		    --rows 0 1 2 --subset 1 2 --out-format tabular | sed 's/\_/\t/g' > nt2-1.csv
 
 
-#### Sequence manipulation
+##### Sequence manipulation
 
 * Translate nucleotides to proteins and remove final "*"
 
@@ -90,7 +90,7 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 
 		fasta_process.pl --fasta example.fasta --reverse --complement > rc.fasta
 
-#### Filtering sequences
+##### Filtering sequences
 
 * Filtering fasta file by length
 
@@ -118,7 +118,7 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 This script does quite a lot things, including filtering, combining, clustering and etc., seems I put too many functions here ...
 However, since the VCF format generated from different caller varies, this script was manily tailored for vcf file generated from GATK (UnifiedGenotyper or HaplotypeCaller, http://www.broadinstitute.org/gatk/), some functions require the AD (allele depth) field, so it may not perform very well for VCF files generated from other caller.
 
-#### Filtering variants
+##### Filtering variants
 
 * Filtering by depth, this only mark samples with depth failed this criteria as missing, but will not filter the whole locus
 
@@ -152,7 +152,7 @@ However, since the VCF format generated from different caller varies, this scrip
 **Note:** some filtering criteria have priority orders, do check the results after filtering!
 
 
-#### Genotype manipulation
+##### Genotype manipulation
 
 vcf_process.pl use the non-reference allele depth ratio (NRADR, reads support reference allele / all reads covered) to test whether the initial genotyping was really accurate, genotypes failed these criteria could be re-genotyped or set as missing, require AD fields (also add support for NR,NV tags generated from caller like Platypus, but less tested)
 
@@ -172,7 +172,7 @@ vcf_process.pl use the non-reference allele depth ratio (NRADR, reads support re
 
 
 
-#### Collecting statistics and metrics of variants
+##### Collecting statistics and metrics of variants
 
 * Collect variants metrics, mainly designed for GATK callers
 
@@ -222,7 +222,7 @@ vcf_process.pl use the non-reference allele depth ratio (NRADR, reads support re
 	while only downstream 10bp for INDELs, thus the INDELs are assumed to be already left aligned
 
 
-#### Clustering variants
+##### Clustering variants
 
 Use vcf_process.pl to clustering markers (genetically linked regions).
 The clustering function is used to identify genome blocks through certain type of markers. This was done by fisrt search for the reliable seeds (segments with consecutive markers of the same type and pass the criteria, the "seeding" stage), then merge adjacent seeds with same type to form blocks (the "extension" stage), the boundary between blocks of different type was determined according to the markers present between two blocks or use the middle point while no more markers present. 
@@ -256,7 +256,7 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 		    --colors "type1:strong_red2;B:strong_blue2" --sort-blocks sample-original sample --format png
 
 
-#### Combining vcf files
+##### Combining vcf files
 
 
 * Combine two vcf files according to the "CHROM" and "POS" fields
