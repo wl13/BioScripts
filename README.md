@@ -3,14 +3,17 @@
 ## INTRODUCTION
 Scripts for bioinformatics processing and analysis. Supplement to other more useful tools like bcftools (http://samtools.github.io/bcftools/), vcftools (https://vcftools.github.io/index.html) and etc. Most scripts were designed to support "pipe-in" and "pipe-out".
 
+<br />
 
 ## INSTALL
 Add the PATH of "MyPerl" folder to PERL5LIB environment, something like "export PERL5LIB=$HOME/folder_contain_MyPerl", or copy it to a pre-exist folder like "perl/site/lib", or just copy it to the same folder where you run the script
 
+<br />
 
 ## USAGE
 Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details of each option 
 
+<br />
 
 ## File Process
 
@@ -97,7 +100,7 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 
 		fasta_process.pl --fasta example.fasta --match "scaffold|contig" > chromosome.fasta
 
-
+<br />
 
 
 ### convert_fastq_quality.pl
@@ -107,6 +110,7 @@ Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details 
 
 		zcat reads.fq.gz | convert_fastq_quality.pl -i - -c sanger2illumina | gzip -c > reads.converted.fq.gz
 
+<br />
 
 ### vcf_process.pl
 > VCF format file related processing.
@@ -270,6 +274,7 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 		vcf_process.pl --vcf hc.vcf --secondary-vcf ug.vcf --combine-rows 0 1 --compare-row 4 \
 		    --primary-tag HC --secondary-tag UG --intersect-tag "UG+HC" > combined.vcf
 
+<br />
 
 ### fgenesh2gff.pl
 > Convert results from fgenesh to gff3 format
@@ -287,6 +292,7 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 		sed 's/ no reliable predictions /\/\//' fgenesh.txt | \
 			fgenesh2gff.pl -i - --write-seq protein --wordwrap 60 > fgenesh.protein.fas
 
+<br />
 
 ### gff2fasta.pl
 > Extract sequences (mRNA or CDS) from gff3 file to fasta file.
@@ -299,19 +305,22 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 
 		gff2fasta.pl --gff example.gff --seqs example.fasta --features cds > example.cds.fasta
 
+<br />
 
 ### gff2tables.pl
 > Convert gff to tabular format
 
+<br />
 
 ### intervals2bed
 > Convert intervals to bed format, e.g. chr01:1-1000 -> chr01	0	1000
 
+<br />
 
 ### maskedSEQ2bed.pl
 > Extract masked (lowercase and Ns) regions in bed format, quite slow ...
 
-
+<br />
 
 ### bam2fasta.pl
 > Convert SAM/BAM to FASTA/Q format
@@ -321,6 +330,7 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 		bam2fasta.pl -b example.bam -s "-f 4" | \
             		blastall -p blastn -d genome.fasta -e 1e-70 -a 1 -m 8 -F F -n T -o unmapped.blast.csv
 
+<br />
 
 ### sam2fastq.pl
 > Convert SAM/BAM to FASTQ format
@@ -329,6 +339,7 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 
 		sam2fastq.pl -i example.sam -o prefix
 
+<br />
 
 ### extract_bam_pairs.pl
 > Extract reads in pairs from SAM/BAM file
@@ -340,6 +351,7 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 		    --min-insert 450 --max-insert 550 --max-clipping 2 --format fastq \
 		    --bam sample1.bam sample2.bam --output extracted
 
+<br />
 
 **Note:** Difference between **bam2fasta.pl**, **sam2fastq.pl** and **extract_bam_pairs.pl**
 
@@ -349,6 +361,8 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 
 They can be actually integrated, but why 3 scripts? Because I forget the previous one when I started write a new one, and finally I got three ...
 
+
+<br />
 
 
 ## Calculation
@@ -390,14 +404,18 @@ They can be actually integrated, but why 3 scripts? Because I forget the previou
 
 		calc_pop_divs.pl --query pair_diffs.csv --subject pair_infos.csv --min-info-perc 50 > pairs_divs.mean.csv
 
+<br />
+
 
 ### count_vcf_pairs.pl
 > A company script of calc_vcf_diversity.pl to count informative sites
 
+<br />
 
 ### calc_pop_divs.pl
 > Post-calculation script of results from calc_vcf_diversity.pl and count_vcf_pairs.pl
 
+<br />
 
 ### slide_windows_count.pl
 > Count by slide windows
@@ -413,6 +431,7 @@ They can be actually integrated, but why 3 scripts? Because I forget the previou
 **Note:** This script use two different algorithms while counting non-overlapping and overlapping (when a step size is specified) windows. The first algorithm is relatively fast and does not require too much memory as it count on-the-fly while reading file; however, count non-overlapping windows needs first read the entire file, and the subsequent counting rely on the grep function is not
 quite efficient, thus could be very slow and memory-intensive while process large files.
 
+<br />
 
 ## Visualization
 
@@ -434,6 +453,7 @@ quite efficient, thus could be very slow and memory-intensive while process larg
 		    --width 800 --height 600 --thickness 20 --chrom-distance 20 --block-distance 2 \
 		    --output example.snp --length genome.fa.fai --colors "SNP:red"
 
+<br />
 
 ### ggplot-windows-count.R
 > Plot distributions with ggplot2
@@ -459,6 +479,8 @@ quite efficient, thus could be very slow and memory-intensive while process larg
 		Rscript ggplot-windows-count.R example.w200k.txt example.w200k.tiff
     
 
+<br />
+
 ### ggplot-windows-multi.R
 > Alternative to ggplot-windows-count.R, designed for different input format
 
@@ -473,14 +495,17 @@ quite efficient, thus could be very slow and memory-intensive while process larg
 
 		Rscript ggplot-windows-multi.R counts.w500.txt counts.w500.tiff
 
+<br />
 
 ### ggplot-liner-fit.R
 > Liner fit with ggplot2
 
+<br />
 
 ### plot-scatter_with_lines.R
 > Scatter plot
 
+<br />
 
 ## Miscellaneous
 
@@ -505,7 +530,7 @@ sequence, and re-align all sequences to the consensus sequence.
 
 		reference_align.pl -i example.fa -a muscle > example.aln.fas
 
-
+<br />
 
 ### parallel_baseml.pl
 > Wrapper to run PAML (baseml) in parallel
@@ -514,6 +539,7 @@ sequence, and re-align all sequences to the consensus sequence.
 
 		parallel_baseml.pl --input aln.fas --model 0 1 2 3 4 5 6 7 8 --align-length 100 > aln.csv
 
+<br />
 
 ### parallel_codeml.pl
 > Wrapper to run PAML (codeml) in parallel
@@ -522,6 +548,7 @@ sequence, and re-align all sequences to the consensus sequence.
 
 		parallel_codeml.pl --ref ref.tbl --samples samples.tbl --query query.tsv --threads 6 > query.codeml.csv
 
+<br />
 
 ### ascii2num
 > Convert ASCII characters to Numbers
@@ -530,5 +557,6 @@ sequence, and re-align all sequences to the consensus sequence.
 
 		ascii2num "AAAA"
 
+<br />
 
 These scripts are free softwares; you can redistribute it and/or modify it under the same terms as Perl itself.
