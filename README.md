@@ -276,24 +276,6 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 
 <br />
 
-### fgenesh2gff.pl
-> Convert results from fgenesh to gff3 format
-
-* All sequences have predictions
-
-		fgenesh2gff.pl -i fgenesh.txt -o fgenesh.gff
-
-* Contain sequences did not have reliable predictions
-
-		sed 's/ no reliable predictions /\/\//' fgenesh.txt | fgenesh2gff.pl -i - -o fgenesh.gff
-
-* Direct extract sequences
-
-		sed 's/ no reliable predictions /\/\//' fgenesh.txt | \
-			fgenesh2gff.pl -i - --write-seq protein --wordwrap 60 > fgenesh.protein.fas
-
-<br />
-
 ### gff2fasta.pl
 > Extract sequences (mRNA or CDS) from gff3 file to fasta file.
 
