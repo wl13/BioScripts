@@ -5,8 +5,8 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-31
-#   Updated: 2015-11-12
-#   Version: 2.0.3
+#   Updated: 2017-05-27
+#   Version: 2.0.4
 #
 #   Change logs:
 #   Version 1.0.0 13/05/07: The initial version.
@@ -24,6 +24,7 @@
 #                           values; update explanation of some options.
 #   Version 2.0.2 15/10/23: Bug fixed while no percentile value returned.
 #   Version 2.0.3 15/11/12: Add median values in output results.
+#   Version 2.0.4 17/05/27: Update: Add option "--skip-minus" to skip unwanted minus values.
 
 
 use strict;
@@ -42,12 +43,12 @@ use MyPerl::FileIO qw(:all);
 
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '2.0.3';
+my $VERSION = '2.0.4';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 
 
 my %options = ();
-my ($output, $multi_values, @percentiles);
+my ($output, $multi_values, @percentiles, $skip_minus);
 GetOptions(
             "input=s"               => \$options{input_file},
             
@@ -61,6 +62,8 @@ GetOptions(
             "percent=f{,}"          => \@percentiles,
             
             "multi-values"          => \$multi_values,
+            
+            "skip-minus"            => \$skip_minus,
            );
 
 unless( $options{input_file} ) {
@@ -114,7 +117,9 @@ Options:
         order of key fields (or master key fields while "--multi-values" option
         is specified)
     
-        
+    -s, --skip-minus
+        skip minus numbers in values
+    
 EOF
 
     exit(1);
@@ -185,6 +190,8 @@ sub count_subtotal
         
         for (my $i=0; $i<@values; $i++)
         {
+            next if ($skip_minus && $values[$i] < 0);
+            
             if ($multi_values) {
                 push @{$Stats{$key}->{$i}}, $values[$i];
             }

@@ -5,15 +5,18 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-31
-#   Updated: 2016-05-06
-#   Version: 1.1.1
+#   Updated: 2017-05-25
+#   Version: 1.1.2
 #
 #   Change logs:
 #   Version 1.0.0 13/11/13: The initial version.
 #   Version 1.1.0 15/02/12: Skip loci where chromosome sequence is not given; add
 #                           and change several options.
 #   Version 1.1.1 16/05/06: Bug fixed: use Parent id instead of ID field in CDS.
-
+#   Version 1.1.2 17/05/25: Bug fixed: unused features other than mRNA or CDS would cause
+#                           script abort due to no IDs present; cds sequences contain
+#                           lowercased nucleotides would cause complement failure in reverse strand;
+#                           Update: output sequences in the same order as input gff file.
 
 
 
@@ -51,7 +54,7 @@ use MyPerl::Compare;
 ######################### Main #########################
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '1.1.1';
+my $VERSION = '1.1.2';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 my $SOURCE  = (scalar localtime()) . " Version: $VERSION";
 
@@ -158,6 +161,9 @@ sub convert_gff2seqs
     
     my %gff_features = ();
     
+    my @out_chrs = ();
+    my %out_ids  = ();
+    my %dups     = ();
     my $fh = getInputFilehandle($in);    
     while (<$fh>)
     {
@@ -165,7 +171,7 @@ sub convert_gff2seqs
         my ($chrom, $source, $feature, $start, $end,
             $score, $strand, $frame, $attribute) = (split /\t/);
         
-        next unless($SEQs{$chrom});
+        next unless($SEQs{$chrom} && (($feature eq 'mRNA') || ($feature eq 'CDS')));
         
         my $ID = '';
         
@@ -181,21 +187,29 @@ sub convert_gff2seqs
         }
         
         if ($feature eq 'mRNA') {
-            $gff_features{gene}->{$chrom}->{$ID} = [$start, $end, $strand];
+            $gff_features{gene}->{$chrom}->{$ID} = [$start, $end, $strand, $frame];
         }
         elsif ($feature eq 'CDS') {
-            push @{$gff_features{cds}->{$chrom}->{$ID}}, [$start, $end, $strand];
+            push @{$gff_features{cds}->{$chrom}->{$ID}}, [$start, $end, $strand, $frame];
+        }
+        
+        unless($dups{chrom}->{$chrom}) {
+            push @out_chrs, $chrom; $dups{chrom}->{$chrom}++;
+        }
+        
+        unless($dups{$chrom}->{$ID}) {
+            push @{$out_ids{$chrom}}, $ID; $dups{$chrom}->{$ID}++;
         }
     }
-
+    
     if ($out_features eq 'mrna') {
-        for my $chrom (sort keys %{$gff_features{gene}})
+        for my $chrom (@out_chrs)  ## sort keys %{$gff_features{gene}}
         {
-            my @ids = sort { $gff_features{gene}->{$chrom}->{$a}->[0] <=>
-                             $gff_features{gene}->{$chrom}->{$b}->[0] }
-                      keys %{$gff_features{gene}->{$chrom}};
+            #my @ids = sort { $gff_features{gene}->{$chrom}->{$a}->[0] <=>
+            #                 $gff_features{gene}->{$chrom}->{$b}->[0] }
+            #          keys %{$gff_features{gene}->{$chrom}};
             
-            for my $id (@ids)
+            for my $id (@{$out_ids{$chrom}})
             {
                 my ($start, $end, $strand) = @{$gff_features{gene}->{$chrom}->{$id}};
                 
@@ -222,40 +236,51 @@ sub convert_gff2seqs
         }
     }
     elsif ($out_features eq 'cds') {
-        for my $chrom (sort keys %{$gff_features{cds}})
+        for my $chrom (@out_chrs)  ## sort keys %{$gff_features{cds}}
         {
             my %cds_seqs = ();
+            
             for my $id (keys %{$gff_features{cds}->{$chrom}})
             {
                 my @cds_parts = @{$gff_features{cds}->{$chrom}->{$id}};
                 
-                if ($cds_parts[0]->[-1] eq '+') {
+                if ($cds_parts[0]->[2] eq '+') {
                     @cds_parts = sort { $a->[0] <=> $b->[0] } @cds_parts;
                     
                     $cds_seqs{$id}->{start}  = $cds_parts[0]->[0];
                     $cds_seqs{$id}->{strand} = '+';
                     
-                    for my $part (@cds_parts)
+                    for (my $i=0; $i<@cds_parts; $i++)
                     {
-                        my ($start, $end, $strand) = @{$part};
+                        my ($start, $end, $strand, $frame) = @{$cds_parts[$i]};
+                        
+                        if ($i == 0 && $frame > 0) {
+                            $start += $frame;
+                        }
+                        
                         my $seq = substr($SEQs{$chrom}, $start-1, $end-$start+1);
                         
                         push @{$cds_seqs{$id}->{seq}}, $seq;
                         push @{$cds_seqs{$id}->{pos}}, "$start..$end";
                     }
                 }
-                elsif ($cds_parts[0]->[-1] eq '-') {
+                elsif ($cds_parts[0]->[2] eq '-') {
                     @cds_parts = sort { $b->[0] <=> $a->[0] } @cds_parts;
                     
                     $cds_seqs{$id}->{start}  = $cds_parts[-1]->[0];
                     $cds_seqs{$id}->{strand} = '-';
                     
-                    for my $part (@cds_parts)
+                    
+                    for (my $i=0; $i<@cds_parts; $i++)
                     {
-                        my ($start, $end, $strand) = @{$part};
+                        my ($start, $end, $strand, $frame) = @{$cds_parts[$i]};
+                        
+                        if ($i == 0 && $frame > 0) {
+                            $end -= $frame;
+                        }
                         
                         my $seq = substr($SEQs{$chrom}, $start-1, $end-$start+1);
-                           $seq =~ tr/ATGC/TACG/;
+                           $seq =~ tr/atgcATGC/tacgTACG/;
                            $seq = reverse $seq;
                         
                         push @{$cds_seqs{$id}->{seq}}, $seq;
@@ -264,11 +289,13 @@ sub convert_gff2seqs
                 }
             }
             
-            my @cds_ids = sort { $cds_seqs{$a}->{start} <=>
-                                 $cds_seqs{$b}->{start} } keys %cds_seqs;
             
-            for my $id (@cds_ids)
+            #my @cds_ids = sort { $cds_seqs{$a}->{start} <=>
+            #                     $cds_seqs{$b}->{start} } keys %cds_seqs;
+            for my $id (@{$out_ids{$chrom}})
             {
+                next unless($cds_seqs{$id});
+                
                 my $cds_seq = join '',  @{$cds_seqs{$id}->{seq}};
                 my $cds_pos = join ',', @{$cds_seqs{$id}->{pos}};
                 my $strand  = $cds_seqs{$id}->{strand};

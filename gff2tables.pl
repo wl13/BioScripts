@@ -5,8 +5,8 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-31
-#   Updated: 2015-12-14
-#   Version: 1.0.4
+#   Updated: 2017-05-22
+#   Version: 1.0.5
 #
 #   Change logs:
 #   Version 1.0.0 13/04/14: The initial version.
@@ -16,6 +16,7 @@
 #   Version 1.0.3 13/06/29: Add function annotations to output; bug fixed: parent ids not assigned
 #                           for each mRNA record while "--remove-alt" is omited.
 #   Version 1.0.4 15/12/14: Bug fixed: skip header lines; Updated: output promoter regions.
+#   Version 1.0.5 17/05/22: Bug fixed: skip features without ID present.
 
 
 
@@ -55,7 +56,7 @@ use MyPerl::Compare;
 ######################### Main #########################
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '1.0.4';
+my $VERSION = '1.0.5';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 my $SOURCE  = (scalar localtime()) . " Version: $VERSION";
 
@@ -196,7 +197,8 @@ sub get_represent_trans
             $Locus_ids{$ID} = $Parent;
             
             unless( $ID ) {
-                print STDERR "Error: No ID info found for line $.: $_"; next;;
+                #print STDERR "Error: No ID info found for line $.: $_";
+                next;
             }
             
             ###unless( $Parent ) {
@@ -268,7 +270,8 @@ sub convert_gff2tables
         }
         
         unless( $ID && $Locus_ids{$ID} ) {
-            print STDERR "Error: No ID info found for line $.: $_\n"; exit;
+            #print STDERR "Error: No ID info found for line $.: $_\n";
+            next;
         }
         
         next if ($remove_alt && !$representative_trans{$ID});
