@@ -5,7 +5,7 @@
 #
 #   Author: Nowind
 #   Created: 2011-01-08
-#   Updated: 2016-02-10
+#   Updated: 2017-05-28
 #
 #   Change logs:
 #   Version 1.0.0 12/12/03: The initial version.
@@ -44,6 +44,7 @@
 #   Version 2.0.0 16/02/10: Updated: change script name to "calc_vcf_diversity.pl"; add option "--informative"
 #                           to use informative sites in calculating pairwise diversity; add option
 #                           "--weight-for-het".
+#   Version 2.0.1 17/05/28: Bug fixed: duplicate results while vcf header and length file both present.
 
 
 
@@ -105,7 +106,7 @@ use Statistics::Descriptive;
 ############################# Main ###########################
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '2.0.0';
+my $VERSION = '2.0.1';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 
 
@@ -352,12 +353,12 @@ my @CHROM_IDS      = ();
 my @SAMPLE_NAMES   = ();
 my $CONTIG_INFO    = '';
 parse_vcf_header($vcf_file);
-if ($options{length_file}) {
+if ($options{length_file} && (scalar @CHROM_IDS == 0)) {
     get_genome_length(\@CHROM_IDS, \%CHROM_LENGTHS, $options{length_file}, \@{$options{exclude_ids}});
 }
 print STDERR "done!\n";
 
-if (!$interval_file && @CHROM_IDS == 0 && !$options{length_file}) {
+if (!$interval_file && (scalar @CHROM_IDS == 0) && !$options{length_file}) {
     print STDERR "Error: Chromosome info not found, please check vcf header or specify a length file!\n";
     exit(2);
 }
