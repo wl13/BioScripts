@@ -341,7 +341,7 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 		sam2fastq.pl convert in pairs;
 		extract_bam_pairs.pl extract all reads overlap certain regions and search for its pairs.
 
-They can be actually integrated, but why 3 scripts? Because I forget the previous one when I started write a new one, and finally I got three ...
+They can be actually integrated, but why 3 scripts? Because I forget the previous one when I started writing a new one, and finally I got three ...
 
 
 <br />
