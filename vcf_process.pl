@@ -5,8 +5,8 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-30
-#   Updated: 2016-05-04
-#   Version: 2.4.5
+#   Updated: 2017-09-27
+#   Version: 2.4.7
 #
 #   Change logs:
 #   Version 1.0.0 12/09/28: The initial version.
@@ -91,7 +91,8 @@
 #   Version 2.4.3 15/11/04: Add options to set combine rows while combine two vcf files; update Vcf.pm to version 1.6.4.
 #   Version 2.4.4 16/02/10: Updated: correct some explanation of options.
 #   Version 2.4.5 16/05/04: Updated: add option "--compare-rows".
-
+#   Version 2.4.6 16/05/30: Updated: update Vcf.pm to version 1.6.9; revise help messages.
+#   Version 2.4.7 17/09/27: Updated: add definition of "rare alleles" here.
 
 
 =head1 NAME
@@ -126,7 +127,7 @@ use MyPerl::Vcf qw(:all);
 ################### Main #################
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '2.4.5';
+my $VERSION = '2.4.7';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 my $SOURCE  = (scalar localtime()) . " Version: $VERSION";
 
@@ -278,7 +279,7 @@ Input Options:
 
     --secondary-vcf <filename>
         set a secondary vcf file, which will be combined into the primary
-        vcf file specified use "--vcf" option, only new records in secondary
+        vcf file specified with "--vcf" option, only new records in secondary
         file will be added to the final vcf file
     
         
@@ -292,7 +293,7 @@ Input Options:
         specify homozygous samples 
     --default-sample-type <string>
         all sample will be treated as type specifed here if neither of
-        preivous two options is specified, default: het
+        above two options are specified, default: het
         
         
     --contig  <filename>
@@ -321,15 +322,17 @@ Output Options:
 
     --stats-out <filename>
         do some statistics and write the results to this file
+    --stats-only
+        only output statistics results, while this option is specified, the
+        output will be redirected to STDOUT if "--stats-out" is not specified
 
+        
     --out-genotype-stats
         output overall stats of genotypes for each sample
     --out-locus-stats
         output count of variants in each locus
         
-    --stats-only
-        only output statistics results, while this option is specified, the
-        output will be redirected to STDOUT if "--stats-out" is not specified
+
     --ref-depth
         use non-reference allele depth instead minor allele depth in stats
         output
@@ -438,9 +441,10 @@ Filtering Options:
         specified range
 
     --rare-only       <int>
-        only output loci contain rare alleles, the rare allele was defined
-        as non-reference allele with a frequency no more than the value
-        specified here
+        output loci contain alleles which only present in "N" samples where
+        "N" <= specified value
+    --no-rare-ref
+        skip loci where the "rare" allele is reference allele
     --exclude-samples <strings>
         loci shared with those samples will be skipped while scanning for
         rare variants
