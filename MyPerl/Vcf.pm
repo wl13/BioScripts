@@ -4,8 +4,8 @@
 #
 #  Author: Nowind
 #  Created: 2014-11-08
-#  Updated: 2016-05-16
-#  Version: 1.6.8
+#  Updated: 2017-09-27
+#  Version: 1.6.11
 #
 #  Change logs:
 #  Version 1.0.0 14/11/08: The initial version.
@@ -34,6 +34,9 @@
 #  Version 1.6.8 16/05/16: Bug fixed in function combine_vcfs:
 #                               1) uninitialized value while combine duplicate records;
 #                               2) results lost if contig infos missed or incomplete in vcf header
+#  Version 1.6.9 16/05/30: Updated: output alleles in locus stats.
+#  Version 1.6.10 16/08/13: Bug fixed: AD fields could contain dots after merging vcf files using bcftools merge.
+#  Version 1.6.11 17/09/27: Updated: add explanations for RAREALLELE.
 
 
 
@@ -99,7 +102,7 @@ use vars qw(
 @EXPORT    = qw();
 
 
-$MyPerl::Vcf::VERSION = '1.6.8';
+$MyPerl::Vcf::VERSION = '1.6.11';
 
 
 =head1 METHODS
@@ -213,11 +216,12 @@ sub filter_vcf
     
     ## file header for loci stats
     if ($opts->{locus_stats}) {
+        my $out_locus_header = "#chrom\tpos\tref\talt\tref_count\talt_count\thet_count\tmissing_count\tallele_freqs\tlow_depth_count\tover_covered_count\n";
         if ($opts->{stats_outfile}) {
-            print STATS "#chrom\tpos\tref_count\talt_count\thet_count\tmissing_count\tlow_depth_count\tover_covered_count\n";
+            print STATS $out_locus_header;
         }
         else {
-            print STDOUT "#chrom\tpos\tref_count\talt_count\thet_count\tmissing_count\tlow_depth_count\tover_covered_count\n";
+            print STDOUT $out_locus_header;
         }
     }
    
@@ -325,9 +329,9 @@ sub filter_vcf
             unless ($opts->{stats_only}) {
                 if ($opts->{max_rare_count}) {
                 print STDOUT <<EOF;
-##INFO=<ID=RAREALLELE,Number=1,Type=String,Description="Non-reference allele with a minimum frequency">
-##INFO=<ID=RAREFQ,Number=1,Type=Integer,Description="Frequency of rare allele">
-##INFO=<ID=RARESAMPLES,Number=1,Type=String,Description="Samples contain the rare allele">                    
+##INFO=<ID=RAREALLELE,Number=1,Type=String,Description="Allele only present in a certain number of samples">
+##INFO=<ID=RAREFQ,Number=1,Type=Integer,Description="Number of samples contain RAREALLELE">
+##INFO=<ID=RARESAMPLES,Number=1,Type=String,Description="List of samples contain RAREALLELE">                    
 EOF
                 }
                 print STDOUT "$opts->{source_line}\n";
@@ -438,7 +442,7 @@ EOF
         my $low_dp_cnt   = 0;
         my $high_dp_cnt  = 0;
         my %missing_cnts = ();
-        my %allele_freqs = ();
+        my %allele_freqs = ();  ## allele sample frequency, not general meaning of allele frequency
         
         if (defined($tags{GT})) {
             for (my $i=9; $i<@line; $i++)
@@ -580,6 +584,8 @@ EOF
                         
                         if ($AD && ($AD ne '.')) {
                             @dps = (split /\,/, $AD);
+                            
+                            for (my $n=0; $n < @dps; $n++) { if ($dps[$n] eq '.') {$dps[$n] = 0;} }  ## fix AD fields
                         }
                     }
                     elsif ($tags{NR} && $tags{NV} && (@alleles == 2)) {
@@ -791,7 +797,7 @@ EOF
                     $alt_cnt ++;
                 }
                 
-                ## count allele frequency
+                ## count allele frequency by sample rather than haploid
                 push @{$allele_freqs{$allele1}}, $sample_id;
                 if ($allele1 ne $allele2) {
                     push @{$allele_freqs{$allele2}}, $sample_id;
@@ -815,11 +821,24 @@ EOF
         }
         
         if ($opts->{locus_stats}) {
+            my @allele_consists = ();
+            for (my $j=0; $j<@alleles; $j++)
+            {
+                next unless($allele_freqs{$j});
+                
+                my $allele_cnt = scalar @{$allele_freqs{$j}};
+                
+                push @allele_consists, "$alleles[$j]:$allele_cnt";
+            }
+            my $allele_consist = join ',', @allele_consists;
+            
+            my $out_str = "$CHROM\t$POS\t$REF\t$ALT\t$ref_cnt\t$alt_cnt\t$het_cnt\t$missing_cnt\t$allele_consist\t$low_dp_cnt\t$high_dp_cnt\n";
+            
             if ($opts->{stats_outfile}) {
-                print STATS "$CHROM\t$POS\t$ref_cnt\t$alt_cnt\t$het_cnt\t$missing_cnt\t$low_dp_cnt\t$high_dp_cnt\n";
+                print STATS $out_str;
             }
             else {
-                print STDOUT "$CHROM\t$POS\t$ref_cnt\t$alt_cnt\t$het_cnt\t$missing_cnt\t$low_dp_cnt\t$high_dp_cnt\n";
+                print STDOUT $out_str;
             }
             
         }
@@ -2871,7 +2890,7 @@ sub combine_vcfs
 
 =head1 VERSION
 
-1.6.8
+1.6.11
 
 =head1 AUTHOR
 
