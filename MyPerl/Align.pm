@@ -198,7 +198,7 @@ sub align_seqs
     my ($obj, @seqs) = @_;
     
     my $tmp_dir   = File::Temp->newdir();
-    my $tmp_in_fh = File::Temp->new( DIR => $tmp_dir );
+    my $tmp_in_fh = File::Temp->new( DIR => $tmp_dir->dirname );
     my $tmp_in    = $tmp_in_fh->filename;
     my $tmp_ot    = $tmp_in . "_aln";
     
@@ -236,7 +236,7 @@ sub Align_By_Codon
     my @nt2 = split //, $seqobj2->seq;
     
     my $tmp_dir   = File::Temp->newdir();
-    my $tmp_in_fh = File::Temp->new( DIR => $tmp_dir );
+    my $tmp_in_fh = File::Temp->new( DIR => $tmp_dir->dirname );
     my $tmp_in    = $tmp_in_fh->filename;
     
     my $seqout    = Bio::SeqIO->new( -file   => "> $tmp_in", -format => 'fasta' );
