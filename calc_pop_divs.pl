@@ -5,11 +5,12 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-31
-#   Updated: 2016-02-10
-#   Version: 1.0.0
+#   Updated: 2016-10-05
+#   Version: 1.1.0
 #
 #   Change logs:
 #   Version 1.0.0 16/02/10: The initial version.
+#   Version 1.1.0 16/10/05: Updated: add option "--all-pairs" to output corrected diversities for all pairs.
 
 
 
@@ -27,17 +28,19 @@ use MyPerl::FileIO qw(:all);
 
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '1.0.0';
+my $VERSION = '1.1.0';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 
 
 my $min_info_perc = 50;
-my ($query_file, $subject_file, $output);
+my ($query_file, $subject_file, $output, $out_all_pairs);
 GetOptions(
             "query=s"           => \$query_file,
             "subject=s"         => \$subject_file,
             "output=s"          => \$output,
             "min-info-perc=f"   => \$min_info_perc,
+            
+            "all-pairs"         => \$out_all_pairs,
            );
 
 unless( $query_file && $subject_file ) {
@@ -61,6 +64,9 @@ Options:
         windows with informative sites less than this percentage will be
         discarded from calculation [default: 50]
     
+    -a, --all-pairs
+        output corrected diversities for all pairs
+
 EOF
 
     exit(1);
@@ -110,7 +116,9 @@ print STDERR "done!\n";
 ##
 print STDERR ">> Start parsing $subject_file ... ";
 print STDOUT "$HEADER##" . (scalar localtime()) . "\n";
-print STDOUT "#BIN_ID\tCHROM\tBIN_START\tBIN_END\tNo_Of_Pairs\tPop_Divers\n";
+unless ($out_all_pairs) {
+    print STDOUT "#BIN_ID\tCHROM\tBIN_START\tBIN_END\tNo_Of_Pairs\tPop_Divers\n";
+}
 my @sub_pair_ids   = ();
 my $fh2   = getInputFilehandle($subject_file);
 while (<$fh2>)
@@ -120,6 +128,10 @@ while (<$fh2>)
     my ($bin_id, $chrom, $bin_start, $bin_end, @pairs) = (split /\s+/);
     
     if (/^\#BIN_ID/) {
+        if ($out_all_pairs) {
+            print STDOUT;
+        }
+        
         for (my $i=0; $i<@pairs; $i++)
         {
             push @sub_pair_ids, $pairs[$i];
@@ -136,14 +148,28 @@ while (<$fh2>)
     for (my $i=0; $i<@pairs; $i++)
     {
         if (100 * $pairs[$i] / $bin_size >= $min_info_perc) {
-            $pair_divs{sum} += $pair_diffs{"$chrom\t$bin_start\t$bin_end"}->{$sub_pair_ids[$i]} / $pairs[$i];
+            my $divs = $pair_diffs{"$chrom\t$bin_start\t$bin_end"}->{$sub_pair_ids[$i]} / $pairs[$i];;
+            
+            $pair_divs{sum} += $divs;
             $pair_divs{num} ++;
-        } 
+            
+            push @{$pair_divs{all}}, $divs;
+        }
+        else {
+            push @{$pair_divs{all}}, -1;
+        }
     }
     
-    my $pop_divs = $pair_divs{num} > 0 ? $pair_divs{sum} / $pair_divs{num} : -1;
+    my $out_divs = "$pair_divs{num}\t";
     
-    print "$bin_id\t$chrom\t$bin_start\t$bin_end\t$pair_divs{num}\t$pop_divs\n";
+    if ($out_all_pairs) {
+        $out_divs = join "\t", @{$pair_divs{all}};
+    }
+    else {
+        $out_divs .= $pair_divs{num} > 0 ? $pair_divs{sum} / $pair_divs{num} : -1;
+    }
+    
+    print "$bin_id\t$chrom\t$bin_start\t$bin_end\t$out_divs\n";
 }
 print STDERR "done!\n";
 

@@ -1,12 +1,12 @@
 #!/usr/bin/perl -w
 #
-#   fasta_process.pl -- query fasta sequences
+#   fasta_process.pl -- Fasta-format file related operations.
 #                          
 #
 #   Author: Nowind
 #   Created: 2012-05-31
-#   Updated: 2016-05-09
-#   Version: 2.0.1
+#   Updated: 2019-11-20
+#   Version: 2.1.0
 #
 #   Change logs:
 #   Version 1.0.0 14/11/10: The initial version.
@@ -16,6 +16,10 @@
 #   Version 2.0.0 16/05/08: Updated: add function to translate sequences; add function to split fasta file;
 #                           support more output format; revise some descriptions.
 #   Version 2.0.1 16/05/09: Bug fixed: remove unused option "--sort-by-list".
+#   Version 2.0.2 17/03/21: Updated: add "--split" option in usage.
+#   Version 2.1.0 19/11/20: Updated: add support for counting homopolymer runs; add support for removing
+#                           unwanted sequences.
+
 
 
 =head1 NAME
@@ -48,7 +52,7 @@ use MyPerl::Convert qw(:all);
 
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '2.0.1';
+my $VERSION = '2.1.0';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 my $SOURCE  = (scalar localtime()) . " Version: $VERSION";
 
@@ -58,10 +62,9 @@ my $out_order    = 'input';
 my $data_type    = 'DNA';
 my $indel_symbol = '-';
 my $no_found_order = 'top';
-my (@fasta_files, $output, $word_wrap, $out_dir,
-    $query_file,  @query_rows, $match_str, @sub_set, $substitution,
-    $min_length, $max_length, $reverse_seq, $complement_seq,
-    $uppercase_seq, $lowercase_seq, $count_nucl, $translate, $seperate, $numeric,
+my (@fasta_files, $output, $word_wrap, $out_dir, $query_file,  @query_rows, @exclude_ids,
+    $match_str, @sub_set, $substitution, $min_length, $max_length, $reverse_seq, $complement_seq,
+    $uppercase_seq, $lowercase_seq, $count_nucl, $count_overall, $translate, $seperate, $numeric,
     $split_fasta, $new_id, $id_as_folder, $omit_id, $prefix, $suffix,);
 GetOptions(
             "fasta=s{,}"       => \@fasta_files,
@@ -69,6 +72,7 @@ GetOptions(
 
             "query=s"          => \$query_file,
             "rows=i{,}"        => \@query_rows,
+            "exclude=s{,}"     => \@exclude_ids,
             
             "out-format=s"     => \$out_format,
             "out-order=s"      => \$out_order,
@@ -94,6 +98,7 @@ GetOptions(
             "lowercase"        => \$lowercase_seq,
             
             "count-nucl=s"     => \$count_nucl,
+            "count-all"        => \$count_overall,
             
             "replace=s"        => \$substitution,
             
@@ -114,7 +119,7 @@ GetOptions(
 unless( @fasta_files > 0 ) {
     print <<EOF;
 
-$0  -- query fasta sequences
+$0  -- Process fasta sequences
 
 Version: $VERSION
 
@@ -181,6 +186,9 @@ Manipulation Options:
         output directory while splitting fasta file, default to current
         working directory
     
+    
+    --split
+        split each fasta record to a seperate file
     --prefix     <string>
         prefix of output filename after splitting
     --suffix     <string>
@@ -222,7 +230,9 @@ Extracting Options:
         "row of position,row of reference nucleotides,row of substitution
         nucleotides"
 
-
+    --exclude <strings>
+        exclude sequences whose ids match the specified strings
+    
 Filtering Options:
     
     --match     <string>
@@ -238,9 +248,14 @@ Filtering Options:
  
 Other options:
 
-    --count-nucl
-        count "dinucleotide" or "triplet" nucleotide context
-
+    --count-nucl <string>
+        count "dinucleotide", "triplet", or "homopolymer" nucleotide context
+    --count-all
+        sum up all counts across given sequences, note this option will first
+        join all sequences into a single sequence by padding "N" between each
+        sequence, so the counting results for di- or tri- nt context for each
+        frame will be slightly different from directly sum up of all nts from
+        each sequence though the sum of all frames will be identical
     
     --data-type  <string>
         specify data type of input fasta file if output in mega format,
@@ -277,8 +292,6 @@ elsif ($output) {
 unless(@query_rows){ @query_rows = (0) };
 
 
-
-
 ## read into all sequences
 my @input_seqs = ();
 my @input_ids  = ();
@@ -301,8 +314,26 @@ for (my $i=0; $i<@input_ids; $i++)
 ##
 ## copy input to output
 ##
-my @output_ids  = @input_ids;
-my @output_seqs = @input_seqs;
+my @output_ids  = ();
+my @output_seqs = ();
+
+if (@exclude_ids > 0) {
+    my $exclude_str = join '|', @exclude_ids;
+    
+    for (my $i=0; $i<@input_ids; $i++)
+    {
+        next if ($input_ids[$i] =~ /$exclude_str/);
+        
+        push @output_ids,  $input_ids[$i];
+        push @output_seqs, $input_seqs[$i];
+    }
+}
+else {
+    @output_ids  = @input_ids;
+    @output_seqs = @input_seqs;
+}
+
+
 
 
 ##
@@ -377,12 +408,24 @@ if ($count_nucl) {
     elsif ($count_nucl eq 'dinucleotide') {
         print STDOUT "#seq_id\tdinucleotides\tforward1\tforward2\treverse1\treverse2\n";
     }
+    elsif ($count_nucl eq 'homopolymer') {
+        print STDOUT "#seq_id\thomopolymers\tlength\tcount\n";
+    }
 }
 
 if ($out_format eq 'mega') {
     print STDOUT "#mega\n";
     print STDOUT "!Title ;\n";
     print STDOUT "!Format DataType=$data_type indel=$indel_symbol;\n\n";
+}
+
+##
+## sum up all sequences when counting
+##
+if ($count_nucl && $count_overall) {
+    my $combined_seq = join "N", @output_seqs;
+    @output_seqs = ($combined_seq);
+    @output_ids  = qw(Overall);
 }
 
 print STDERR ">> Start writing results ... ";
@@ -447,6 +490,9 @@ for (my $i=0; $i < @output_ids; $i++)
         }
         elsif ($count_nucl eq 'dinucleotide') {
             count_dinucleotide($out_id, \$seq);
+        }
+        elsif ($count_nucl eq 'homopolymer') {
+            count_polymers($out_id, \$seq);
         }
     }
     elsif ($out_format eq 'fasta') {
@@ -682,6 +728,8 @@ sub count_dinucleotide
         }
         
         my $counts = join "\t", @counts;
+        
+        
         print STDOUT "$id\t$dint\t$counts\n";
     }
 }
@@ -743,6 +791,49 @@ sub count_triplets
         my $counts = join "\t", @counts;
         
         print STDOUT "$id\t$codon\t$counts\n";
+    }
+}
+
+
+=head2 count_polymers
+
+    About   : Count homopolymer runs in fasta file.
+    Usage   : count_polymers($seq_id, $rs_seq);
+    Args    : Sequence id;
+              Scalar reference to sequence.
+    Returns : Null
+
+=cut
+sub count_polymers
+{
+    my ($id, $rs_seq) = @_;
+    
+    return if (length($$rs_seq) < 3);
+    
+    my $seq = uc ($$rs_seq);
+    
+
+    my %polymer_runs = ();
+    
+    for my $nt (qw(A T G C))
+    {
+        my $rep_seq = $seq;
+           $rep_seq =~ s/[^$nt]/N/g;
+        
+        my @nts = (split /N+/, $rep_seq);
+        
+        $polymer_runs{$_} ++ for @nts;
+    }
+    
+    for my $polymer (sort keys %polymer_runs)
+    {
+        my $rel_len = ($polymer =~ tr/ATGC/ATGC/);
+        
+        next if ($rel_len < 3);
+        
+        my $count = join "\t", $polymer_runs{$polymer};
+        
+        print STDOUT "$id\t$polymer\t$rel_len\t$count\n";
     }
 }
 

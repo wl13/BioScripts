@@ -4,8 +4,8 @@
 #
 #   Author: Nowind
 #   Created: 2012-02-21
-#   Updated: 2015-12-15
-#   Version: 1.2.4
+#   Updated: 2018-12-20
+#   Version: 1.2.5
 #
 #   Change logs:
 #   Version 1.0.0 12/02/21: The initial version.
@@ -20,6 +20,8 @@
 #   Version 1.2.3 15/12/07: Bug fixed: use informative length to calculate GC content and repeat content.
 #   Version 1.2.4 15/12/15: Updated: add option "--sum-all" to output overall stats; add control
 #                           for verbosity.
+#   Version 1.2.5 18/12/20: Bug fixed: add check for sequences with no informative length.
+
 
 
 use strict;
@@ -35,7 +37,7 @@ use MyPerl::FileIO qw(:all);
 ##################### Main ####################
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '1.2.4';
+my $VERSION = '1.2.5';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 
 
@@ -171,6 +173,10 @@ for my $id (@ids)
     }
     elsif ($calc_ratio) {
         my $info_len    = ($seq =~ tr/ATGCatgc/ATGCatgc/);
+        
+        if ($info_len == 0) {
+            print "$id\t$len\t$info_len\t-\t-\t-\t-\n"; next;
+        }
         
         my $gc_num      = ($seq =~ tr/GCgc/GCgc/);
         my $gc_rate     = $gc_num / $info_len;
