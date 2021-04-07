@@ -4,13 +4,14 @@
 #
 #   Author: Nowind
 #   Created: 2012-02-21
-#   Updated: 2016-09-21
-#   Version: 1.2.0
+#   Updated: 2016-09-28
+#   Version: 1.2.1
 #
 #   Change logs:
 #   Version 1.0.0 16/07/30: The initial version.
 #   Version 1.1.0 16/08/12: Updated: add option "--compact" to specify output format.
 #   Version 1.2.0 16/09/21: Updated: add option "--depth" to generate overall allele depths.
+#   Version 1.2.1 16/09/28: Updated: add square brackets around alleles.
 
 
 
@@ -26,7 +27,7 @@ use MyPerl::FileIO qw(:all);
 
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '1.2.0';
+my $VERSION = '1.2.1';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 my $SOURCE  = (scalar localtime()) . " Version: $VERSION";
 
@@ -256,7 +257,7 @@ sub processVCF
             for my $nt (@vars)
             {
                 if ($total_allele_depths{$nt} && $total_allele_depths{$nt} >= $min_out_depth) {
-                    push @allele_depth_info, "$nt:$total_allele_depths{$nt}";
+                    push @allele_depth_info, "[$nt]:$total_allele_depths{$nt}";
                 }
             }
         }

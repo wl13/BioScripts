@@ -5,11 +5,12 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-31
-#   Updated: 2015-05-01
-#   Version: 1.0.0
+#   Updated: 2018-03-30
+#   Version: 1.0.1
 #
 #   Change logs:
 #   Version 1.0.0 15/05/01: The initial version.
+#   Version 1.0.1 18/03/30: Remove ambiguious sites when measure sequence length.
 
 
 
@@ -48,7 +49,7 @@ use MyPerl::Compare;
 ######################### Main #########################
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '1.0.0';
+my $VERSION = '1.0.1';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 my $SOURCE  = (scalar localtime()) . " Version: $VERSION";
 
@@ -161,7 +162,7 @@ while (<$aln_fh>)
     $ref_id =~ s/^\>//;
     $cmp_id =~ s/^\>//;
     
-    my $aln_len = length($ref_seq);
+    my $aln_len = ($ref_seq =~ tr/ATGCatgc-/ATGCatgc-/);
     my $ref_len = $aln_len - ($ref_seq =~ tr/-/-/);
     my $cmp_len = $aln_len - ($cmp_seq =~ tr/-/-/);
     
@@ -200,6 +201,8 @@ while (<$aln_fh>)
             push @results, $1;
             
             last;
+            
+            ###print;
         }
     }
     

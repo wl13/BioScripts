@@ -4,8 +4,8 @@
 #
 #  Author: Nowind
 #  Created: 2010-10-09
-#  Updated: 2016-03-17
-#  Version: 1.1.3
+#  Updated: 2016-09-14
+#  Version: 1.2.2
 #
 #  Change logs:
 #  Version 1.0.0 10/10/09: The initial version.
@@ -17,9 +17,10 @@
 #  Version 1.1.3 16/03/17: Bug fixed: could not write result while muscle is specified without
 #                                     "--quiet" option.
 #                          Updated: Add module "Data::Dumper".
-
-
-
+#  Version 1.2.0 16/09/04: Updated: remove dependency on Bioperl.
+#  Version 1.2.1 16/09/13: Updated: append the stop codon while recovering the original DNA
+#                          sequences through aligned proteins.
+#  Version 1.2.2 16/09/14: Bug fixed: failed to generate tmp results while align with muscle.
 
 
 =head1 NAME
@@ -58,11 +59,10 @@ use strict;
 require Exporter;
 
 use File::Temp;
-use Bio::SeqIO;
 use Data::Dumper;
 
 use MyPerl::FileIO qw(:all);
-
+use MyPerl::Convert qw(:all);
 
 ##
 ## Global Constants and Variables
@@ -79,8 +79,6 @@ use vars qw(
 %EXPORT_TAGS = (
     'all' => [
         qw(
-            Align_DNA
-            Align_By_Codon
         )
     ]
 );
@@ -89,7 +87,7 @@ use vars qw(
 @EXPORT    = qw();
 
 
-$MyPerl::FileIO::VERSION = '1.1.3';
+$MyPerl::FileIO::VERSION = '1.2.2';
 
 
 =head1 METHODS
@@ -165,18 +163,20 @@ sub start
                      . "-outorder=input";
     
     my $run_muscle   = "muscle -in $aln_in -out $aln_out "
-                     . "-maxiters $maxiters";        
+                     . "-maxiters $maxiters -quiet";        
 
     my $cmdline = ($prog eq 'clustalw2') ? $run_clustaw2 : $run_muscle;
        $cmdline = "$cmdline $params " if $params;
     
     if ($log) {
-        $cmdline .= " >>$log 2>&1"
+        $cmdline .= " >>$log 2>&1";
+    }
+    elsif ($prog eq 'clustalw2') {
+        $cmdline .= " >/dev/null 2>&1";
     }
     else {
-        $cmdline .= " >/dev/null 2>&1"
+        $cmdline .= " 2>/dev/null";
     }
-    
     ###print STDERR "$cmdline\n";exit;
     
     system "$cmdline";
@@ -222,74 +222,87 @@ sub align_seqs
 
 
 
-##
-## Align Codons
-##
-sub Align_By_Codon
+=head2 align_codons
+
+    About   : Codon-guided sequences alignments
+    Usage   : my $ra_aln_seqs = $aln->align_seqs($seq1, $seq2, ...);
+    Args    : Sequences need to be aligned, require at least two sequences
+    Returns : Reference to an array contains aligned sequences
+
+=cut
+sub align_codons
 {
-    my ($seqobj1, $seqobj2, $aln_out) = @_;
-    
-    my $gene1  = $seqobj1->id;
-    my $gene2  = $seqobj2->id;
-    
-    my @nt1 = split //, $seqobj1->seq;
-    my @nt2 = split //, $seqobj2->seq;
+    my ($obj, @seqs) = @_;
     
     my $tmp_dir   = File::Temp->newdir();
     my $tmp_in_fh = File::Temp->new( DIR => $tmp_dir );
     my $tmp_in    = $tmp_in_fh->filename;
-    
-    my $seqout    = Bio::SeqIO->new( -file   => "> $tmp_in", -format => 'fasta' );
+    my $tmp_ot    = $tmp_in . "_aln";
 
-    my $trans1 = $seqobj1->translate();
-    my $trans2 = $seqobj2->translate();
-    $seqout->write_seq($trans1);
-    $seqout->write_seq($trans2);        
-    
-    my $aln_file = $tmp_in . "_aln";
-    my $command  = "clustalw2 -INFILE=$tmp_in -TYPE=PROTEIN -ALIGN -OUTFILE=$aln_file -OUTPUT=FASTA -QUIET";
-    system "$command";
-    
-    
-    my %aln_content = ();
-    my $aln_in  = Bio::SeqIO->new( -file => "$aln_file", -format => 'fasta' );
-    my $aln_seq1 = $aln_in->next_seq();
-    my $aln_seq2 = $aln_in->next_seq();
-    $aln_content{$gene1} = [split //, $aln_seq1->seq];
-    $aln_content{$gene2} = [split //, $aln_seq2->seq];
-    
-    
-    my $rseq1 = Recover_NT_Sequence(\@nt1, $aln_content{$gene1});
-    my $rseq2 = Recover_NT_Sequence(\@nt2, $aln_content{$gene2});
-
-    if ($aln_out) {
-        open (FA, ">> $aln_out") or die $!;
-        print FA ">$gene1\n";
-        print FA $$rseq1 . "\n";
-        print FA ">$gene2\n";
-        print FA $$rseq2 . "\n";
-        close FA;
+    my %original_nts = ();
+    for (my $i=0; $i<@seqs; $i++)
+    {
+        @{$original_nts{$i}} = split //, $seqs[$i];
+        
+        my $prot = Translate($seqs[$i]);
+        print $tmp_in_fh ">$i\n$prot\n";
     }
     
-    return ($rseq1, $rseq2);
+    $obj->{input}  = $tmp_in;
+    $obj->{output} = $tmp_ot;
+    $obj->{type}   = 'PROTEIN';
+    
+    my $flag = $obj->start($obj);
+    
+    return -1 if ($flag);
+    
+    my @aln_prots = ();
+    parse_fasta_SEQs(\@aln_prots, $tmp_ot);
+    
+    my @aln_seqs  = ();
+    
+    my %aligned_aas = ();
+    for (my $i=0; $i<@aln_prots; $i++)
+    {
+        @{$aligned_aas{$i}} = split //, $aln_prots[$i];
+        
+        my $rs_aln_seq = recover_codon2nt(\@{$original_nts{$i}}, $aligned_aas{$i});
+        
+        push @aln_seqs, $$rs_aln_seq;
+    }
+    
+    return \@aln_seqs;
 }
 
-#Recover Nucleotide Sequence
-sub Recover_NT_Sequence
+
+=head2 recover_codon2nt
+
+    About   : Recover Nucleotide Sequence
+    Usage   : my $recovered_seqs = recover_codon2nt($nt, $aa);
+    Args    : Array reference to original nucleotides;
+              Array reference to proteins.
+    Returns : Reference to recovered sequences.
+
+=cut
+sub recover_codon2nt
 {
-    my ($nt, $aa) = @_;
+    my ($ra_nt, $ra_aa) = @_;
     
     my $seq = '';
     
-    for (my $i=0; $i<=$#{$aa};$i++)
+    for (my $i=0; $i<=$#{$ra_aa};$i++)
     {
-        if ($aa->[$i] eq '-') {
+        if ($ra_aa->[$i] eq '-') {
             $seq .= '-' x 3;
         } else {
-            $seq .= shift @{$nt};
-            $seq .= shift @{$nt};
-            $seq .= shift @{$nt};
+            $seq .= shift @{$ra_nt};
+            $seq .= shift @{$ra_nt};
+            $seq .= shift @{$ra_nt};
         }
+    }
+    
+    if (@{$ra_nt} > 0) {
+        $seq .= join '', @{$ra_nt};
     }
     
     return \$seq;
@@ -300,7 +313,7 @@ sub Recover_NT_Sequence
 
 =head1 VERSION
 
-1.1.3
+1.2.2
 
 =head1 AUTHOR
 

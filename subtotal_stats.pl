@@ -5,8 +5,8 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-31
-#   Updated: 2017-05-27
-#   Version: 2.0.4
+#   Updated: 2019-01-03
+#   Version: 2.1.0
 #
 #   Change logs:
 #   Version 1.0.0 13/05/07: The initial version.
@@ -25,6 +25,7 @@
 #   Version 2.0.2 15/10/23: Bug fixed while no percentile value returned.
 #   Version 2.0.3 15/11/12: Add median values in output results.
 #   Version 2.0.4 17/05/27: Update: Add option "--skip-minus" to skip unwanted minus values.
+#   Version 2.1.0 19/01/03: Update: Add option "--freq-cnt" to count frequency of string values.
 
 
 use strict;
@@ -43,7 +44,7 @@ use MyPerl::FileIO qw(:all);
 
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '2.0.4';
+my $VERSION = '2.1.0';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 
 
@@ -58,6 +59,7 @@ GetOptions(
             
             "key-type=s"            => \$options{key_type},
             "value-type=s"          => \$options{value_type},
+            "freq-cnt"              => \$options{out_value_freq},
             
             "percent=f{,}"          => \@percentiles,
             
@@ -110,7 +112,9 @@ Options:
         then the actual key field would be "value_id1:ex1", "value_id2:ex1",
         "value_id1:ex2", etc.
 
-        
+    -f, --freq-cnt
+        count frequency of "string" values
+    
     -D, --out-orders <strings>
         specify keys manually, the output will be sorted according to the
         order specified here, this option is used to control the output
@@ -290,17 +294,28 @@ sub count_subtotal
                 ##
                 ## only count frequency of each string
                 ##
+                my %cnts = ();
                 my %dups = ();
                 for my $j (@{$Stats{$sub_key}->{$i}})
                 {
+                    $cnts{$j} ++;
                     next if (exists $dups{$j});
-                    $dups{$j}++;
+                    $dups{$j} ++;
                 }
                 
                 my $cnt_all   = scalar @{$Stats{$sub_key}->{$i}};
                 my $cnt_nodup = scalar (keys %dups);
                 
                 $out_stats = "$cnt_all\t$cnt_nodup";
+                
+                if ($options{out_value_freq}) {
+                    for my $j (sort keys %cnts)
+                    {
+                        print STDOUT "$out_id:$j\t$cnts{$j}\t$dups{$j}\n";
+                    }
+                    
+                    $out_id .= ":All";
+                }
             }
             
             print STDOUT "$out_id\t$out_stats\n";
