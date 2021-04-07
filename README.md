@@ -3,6 +3,8 @@
 ## INTRODUCTION
 Scripts for bioinformatics processing and analysis. Supplement to other more useful tools like bcftools (http://samtools.github.io/bcftools/), vcftools (https://vcftools.github.io/index.html) and etc. Most scripts were designed to support "pipe-in" and "pipe-out".
 
+All PERL scripts are written under PERL5.
+
 <br />
 
 ## INSTALL
@@ -390,7 +392,7 @@ They can be actually integrated, but why 3 scripts? Because I forget the previou
 
 
 ### count_vcf_pairs.pl
-> A company script of calc_vcf_diversity.pl to count informative sites
+> Accompany script of calc_vcf_diversity.pl to count informative sites
 
 <br />
 
