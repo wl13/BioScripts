@@ -543,4 +543,24 @@ sequence, and re-align all sequences to the consensus sequence.
 
 <br />
 
+### extract_split_seqs.pl
+> Extract multiple fragments of a sequence and join the fragments into a new sequence
+
+* Extract Pfam domains (use protein positions to extract CDS sequences)
+
+		extract_split_seqs.pl --query pfam_domain_pos.csv --convert-pos pro2cds --fasta cds.fasta > extract.fasta
+
+<br />
+
+
+
+### map_records.pl
+> Mapping records from subject file to query file
+
+* Map records based on the 1st column, merge duplicates to a single line
+
+		map_records.pl --rows1 0 --rows2 0 --merge-dups --query query.list --subject subject.txt > mapped.csv
+
+<br />
+
 These scripts are free softwares; you can redistribute it and/or modify it under the same terms as Perl itself.
