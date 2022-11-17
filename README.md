@@ -13,7 +13,7 @@ Add the PATH to "MyPerl" folder in PERL5LIB environment, e.g. "export PERL5LIB=$
 <br />
 
 ## USAGE
-Simply type "perl certain_script.pl" or "perl certain_script.pl -h" for details of each option 
+Simply type "<b>perl certain_script.pl</b>" or "<b>perl certain_script.pl -h</b>" for details of each option 
 
 <br />
 
@@ -362,6 +362,17 @@ They can be actually integrated, but why 3 scripts? Because I forget the previou
 <br />
 
 
+
+### extract_split_seqs.pl
+> Extract multiple fragments of a sequence and join the fragments into a new sequence
+
+* Extract Pfam domains (use protein positions to extract CDS sequences), expected format for “pfam_domain_pos.csv”: "seq_id chr1:start1-end1;chr1:start2-end2"
+
+		extract_split_seqs.pl --query pfam_domain_pos.csv --convert-pos pro2cds --fasta cds.fasta > extract.fasta
+
+<br />
+
+
 ## Calculation
 
 ### calc_vcf_diversity.pl
@@ -553,6 +564,17 @@ sequence, and re-align all sequences to the consensus sequence.
 * Mainly used to inspect Fastq qualities
 
 		ascii2num "AAAA"
+
+<br />
+
+
+
+### map_records.pl
+> Mapping records from subject file to query file
+
+* Map records based on the 1st column, merge duplicates to a single line
+
+		map_records.pl --rows1 0 --rows2 0 --merge-dups --query query.list --subject subject.txt > mapped.csv
 
 <br />
 
