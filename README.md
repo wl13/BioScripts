@@ -8,7 +8,7 @@ All PERL scripts are written under PERL5.
 <br />
 
 ## INSTALL
-Add the PATH of "MyPerl" folder to PERL5LIB environment, something like "export PERL5LIB=$HOME/folder_contain_MyPerl", or copy it to a pre-exist folder like "perl/site/lib", or just copy it to the same folder where you run the script
+Add the PATH to "MyPerl" folder in PERL5LIB environment, e.g. "export PERL5LIB=${PATH_to_/site_perl}/MyPerl:$PERL5LIB", or copy it to the site_perl folder which present in PERL5LIB, or just copy it to the same folder where you run the script
 
 <br />
 
@@ -154,6 +154,9 @@ However, since the VCF format generated from different caller varies, this scrip
 **Note:** some filtering criteria have priority orders, do check the results after filtering!
 
 
+
+
+
 ##### Genotype manipulation
 
 vcf_process.pl use the non-reference allele depth ratio (NRADR, reads support reference allele / all reads covered) to test whether the initial genotyping was really accurate, genotypes failed these criteria could be re-genotyped or set as missing, require AD fields (also add support for NR,NV tags generated from caller like Platypus, but less tested)
@@ -275,6 +278,16 @@ The "seeding-and-extension" algorithm was borrowed from "Wijnker, E. et al. The 
 
 		vcf_process.pl --vcf hc.vcf --secondary-vcf ug.vcf --combine-rows 0 1 --compare-row 4 \
 		    --primary-tag HC --secondary-tag UG --intersect-tag "UG+HC" > combined.vcf
+
+<br />
+
+
+### downsample_vcf.pl
+> Downsampling vcf file.
+
+* Random pick 100 sites from a VCF file
+
+		downsample_vcf.pl -i input.vcf.gz -s 100 -t 100 -o rand
 
 <br />
 
