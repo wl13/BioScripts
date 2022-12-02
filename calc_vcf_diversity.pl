@@ -5,7 +5,7 @@
 #
 #   Author: Nowind
 #   Created: 2011-01-08
-#   Updated: 2017-05-28
+#   Updated: 2022-12-02
 #
 #   Change logs:
 #   Version 1.0.0 12/12/03: The initial version.
@@ -39,12 +39,15 @@
 #   Version 1.3.4 14/12/21: Bug fixed: no results returned while using "--cmp-to-sample" without "--group"
 #                           option.
 #   Version 1.3.5 15/10/31: Bug fixed in processing mixed loci.
-#   Version 1.4.0 15/11/17: Updated: use Statistics::Descriptive instead of MyPerl::Statistics; add option
+#   Version 1.4.0 15/11/17: Update: use Statistics::Descriptive instead of MyPerl::Statistics; add option
 #                           "--exclude"; add some detailed explanations.
-#   Version 2.0.0 16/02/10: Updated: change script name to "calc_vcf_diversity.pl"; add option "--informative"
+#   Version 2.0.0 16/02/10: Update: change script name to "calc_vcf_diversity.pl"; add option "--informative"
 #                           to use informative sites in calculating pairwise diversity; add option
 #                           "--weight-for-het".
 #   Version 2.0.1 17/05/28: Bug fixed: duplicate results while vcf header and length file both present.
+#   Version 2.1.0 22/12/02: Update: (1) remove multi-allelic sites as they are not supported;
+#                                   (2) change diff(R/A, R/A) from 0 to 0.5 when using "--weight-for-het" to better estimating haploid diversity;
+#                                   (3) add related notes in descriptions.
 
 
 
@@ -174,7 +177,11 @@ Options:
     -v, --vcf       <filename>
         multiple-Samples vcf file, compressed by bgzip and index by tabix,
         required
-        
+    
+    *Note: this script only use bi-allelic sites, and multi-allelic sites will
+        be ignored. Although variants other than SNPs are accepted, they will
+        be treated as same as SNPs (i.e., variant size is not considered)
+    
     --intervals     <filename>
         file contans one or more genomic intervals over which to operate,
         calculate diversities only in those specified intervals instead
@@ -276,8 +283,20 @@ Options:
         assume heterozygous calls as homozygous alternative calls
     
     --weight-for-het
-        difference between homozygous and heterozygous will be counted as 0.5
-        instead of 1
+        by default this script assumes a haploid or homozygous diploid model,
+        by which heterozygous genotype (R/A) is treated as different allele
+        from both reference (R/R) and alternative allele (A/A), i.e.
+        
+            diff(R/A, R/R) = (R/A, A/A) = 1, and diff(R/A, R/A) = 0
+            
+        specifying this option will consider a more realistic diploid model,
+        by which difference between homozygous and heterozygous, as well as
+        between heterozygous and heterozygous will be counted as 0.5 instead
+        of 1, i.e.
+        
+            diff(R/A, R/A) = diff(R/A, R/R) = diff(R/A, A/A) = 0.5
+        
+        Higher ploidy is not supported currently
     
     -t, --threads  <int>
         how many data threads should be allocated to running this analysis
@@ -704,7 +723,9 @@ sub calc_pairwise_diversity
             $FORMAT, @Samples) = (split /\s+/);
         
         my @vars = ($REF, (split /\,/, $ALT));
-
+        
+        next unless (scalar @vars == 2);          ## remove multi-allelic sites as they are not supported
+        
         my $var_type = get_var_type($REF, $ALT);
         
         next if ($user_type && $var_type !~ /$user_type/); ## process snp or indel only
@@ -732,13 +753,10 @@ sub calc_pairwise_diversity
                     $info_sites{"$SAMPLE_NAMES[$i]\-$SAMPLE_NAMES[$i]"} ++;
                 }
                 
-                if ($genotype1 ne $genotype2) {
-                    if ($weight_for_het && ($genotype1 =~ /het/ || $genotype2 =~ /het/)) {
-                        $differs{"$SAMPLE_NAMES[$i]\-$SAMPLE_NAMES[$i]"} += 0.5;
-                    }
-                    else {
-                        $differs{"$SAMPLE_NAMES[$i]\-$SAMPLE_NAMES[$i]"} ++;
-                    }
+                if ($weight_for_het && ($genotype1 =~ /het/ || $genotype2 =~ /het/)) {
+                    $differs{"$SAMPLE_NAMES[$i]\-$SAMPLE_NAMES[$i]"} += 0.5;
+                } elsif ($genotype1 ne $genotype2) {
+                    $differs{"$SAMPLE_NAMES[$i]\-$SAMPLE_NAMES[$i]"} ++;
                 }
             }
             else {                       ## pairwise comparison
@@ -765,14 +783,11 @@ sub calc_pairwise_diversity
                     }
                     
                     ###my $pair = join "\t", (sort ($Names[$i], $Names[$j]));
-                    if ($genotype1 ne $genotype2) {
-                        ###print STDERR "$genotype1\t$genotype2\n";exit;
-                        if ($weight_for_het && ($genotype1 =~ /het/ || $genotype2 =~ /het/)) {
-                            $differs{"$sample1\-$sample2"} += 0.5;
-                        }
-                        else {
-                            $differs{"$sample1\-$sample2"} ++;
-                        }
+                    
+                    if ($weight_for_het && ($genotype1 =~ /het/ || $genotype2 =~ /het/)) {
+                        $differs{"$sample1\-$sample2"} += 0.5;
+                    } elsif ($genotype1 ne $genotype2) {
+                        $differs{"$sample1\-$sample2"} ++;
                     }
                 }
             }
