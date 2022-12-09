@@ -105,6 +105,26 @@ Simply type "<b>perl certain_script.pl</b>" or "<b>perl certain_script.pl -h</b>
 <br />
 
 
+### rename_fasta.pl
+> Rename sequences ids in fasta format file
+
+* Rename sequences ids in list
+
+		rename_fasta.pl --fasta origin.fas --word-wrap 80 --refer rename_ids.txt > renamed.fasta
+
+
+* Example about the rename_ids.txt:
+
+		#old_id  new_id     
+		seq1   	 human_seq1
+		seq2	 human_seq2
+		...
+
+  
+
+<br />
+
+
 ### convert_fastq_quality.pl
 > Convert fastq encodings 
 
