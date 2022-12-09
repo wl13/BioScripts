@@ -115,9 +115,9 @@ Simply type "<b>perl certain_script.pl</b>" or "<b>perl certain_script.pl -h</b>
 
 * Example about the rename_ids.txt:
 
-		#old_id  new_id     
-		seq1   	 human_seq1
-		seq2	 human_seq2
+		#old_id		new_id     
+		seq1		human_seq1
+		seq2		human_seq2
 		...
 
   
