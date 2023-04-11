@@ -5,7 +5,7 @@
 #
 #   Author: Nowind
 #   Created: 2011-01-08
-#   Updated: 2022-12-02
+#   Updated: 2023-03-28
 #
 #   Change logs:
 #   Version 1.0.0 12/12/03: The initial version.
@@ -48,6 +48,7 @@
 #   Version 2.1.0 22/12/02: Update: (1) remove multi-allelic sites as they are not supported;
 #                                   (2) change diff(R/A, R/A) from 0 to 0.5 when using "--weight-for-het" to better estimating haploid diversity;
 #                                   (3) add related notes in descriptions.
+#   Version 2.1.1 23/03/28: Update: add support for csi-index.
 
 
 
@@ -109,7 +110,7 @@ use Statistics::Descriptive;
 ############################# Main ###########################
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '2.0.1';
+my $VERSION = '2.1.1';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 
 
@@ -329,7 +330,7 @@ my %filters    = ();
 my $filter_str = join '|', @filters;
 
 
-unless( -f "$vcf_file.tbi" ) {
+unless( -f "$vcf_file.tbi" || -f "$vcf_file.csi" ) {
     print STDERR "[Error]: no index found for vcf file!\n"; exit(2);
 }
 
