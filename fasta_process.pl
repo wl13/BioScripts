@@ -5,8 +5,8 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-31
-#   Updated: 2019-11-20
-#   Version: 2.1.0
+#   Updated: 2023-05-25
+#   Version: 2.2.0
 #
 #   Change logs:
 #   Version 1.0.0 14/11/10: The initial version.
@@ -19,6 +19,9 @@
 #   Version 2.0.2 17/03/21: Updated: add "--split" option in usage.
 #   Version 2.1.0 19/11/20: Updated: add support for counting homopolymer runs; add support for removing
 #                           unwanted sequences.
+#   Version 2.2.0 23/05/25: Updated: add support for counting informative length; add option "--quite" to
+#                           suppress progress infos.
+
 
 
 
@@ -52,7 +55,7 @@ use MyPerl::Convert qw(:all);
 
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '2.1.0';
+my $VERSION = '2.2.0';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 my $SOURCE  = (scalar localtime()) . " Version: $VERSION";
 
@@ -65,7 +68,7 @@ my $no_found_order = 'top';
 my (@fasta_files, $output, $word_wrap, $out_dir, $query_file,  @query_rows, @exclude_ids,
     $match_str, @sub_set, $substitution, $min_length, $max_length, $reverse_seq, $complement_seq,
     $uppercase_seq, $lowercase_seq, $count_nucl, $count_overall, $translate, $seperate, $numeric,
-    $split_fasta, $new_id, $id_as_folder, $omit_id, $prefix, $suffix,);
+    $split_fasta, $new_id, $id_as_folder, $omit_id, $prefix, $suffix, $quite_mode);
 GetOptions(
             "fasta=s{,}"       => \@fasta_files,
             "output=s"         => \$output,
@@ -114,6 +117,8 @@ GetOptions(
             
             "id-as-folder"     => \$id_as_folder,
             "omit-id"          => \$omit_id,
+            
+            "quite"            => \$quite_mode,
            );
 
 unless( @fasta_files > 0 ) {
@@ -249,7 +254,8 @@ Filtering Options:
 Other options:
 
     --count-nucl <string>
-        count "dinucleotide", "triplet", or "homopolymer" nucleotide context
+        count "informative" length, or count "dinucleotide", "triplet",
+        "homopolymer" nucleotide context
     --count-all
         sum up all counts across given sequences, note this option will first
         join all sequences into a single sequence by padding "N" between each
@@ -263,7 +269,10 @@ Other options:
     --symbol     <string>
         symbol for indels used for mega output, default: "-"
         
-
+    
+    --quite
+        no verbosity
+    
    *Note: some options have orders, for example you can first extract then
     sort the extracted sequences, while the opposite will not work; simply
     break it into two steps by first sort, then extract. Some options could
@@ -277,7 +286,7 @@ EOF
 $|++;
 
 
-print STDERR "# $0 v$VERSION\n# " . (scalar localtime()) . "\n";
+print STDERR "# $0 v$VERSION\n# " . (scalar localtime()) . "\n" unless($quite_mode);
 
 if ($split_fasta) {
     unless ( $out_dir ) { $out_dir = '.'; }
@@ -297,10 +306,10 @@ my @input_seqs = ();
 my @input_ids  = ();
 for my $in (@fasta_files)
 {
-    print STDERR ">> Start reading sequences from $in ... ";
+    print STDERR ">> Start reading sequences from $in ... " unless($quite_mode);
     my @ids  = parse_fasta_SEQs(\@input_seqs, $in);
     push @input_ids, @ids;
-    print STDERR "done!\n";
+    print STDERR "done!\n" unless($quite_mode);
 }
 
 ## convert array to hash
@@ -340,10 +349,10 @@ else {
 ## query sequences
 ##
 if (defined $query_file) {
-    print STDERR ">> Start querying $query_file ... ";
+    print STDERR ">> Start querying $query_file ... " unless($quite_mode);
     my %query_records = ();
     extract_seqs(\%query_records, $query_file);
-    print STDERR "done!\n";
+    print STDERR "done!\n" unless($quite_mode);
     
     if($query_records{id}) {
         ## update the output arrays
@@ -361,7 +370,7 @@ if (defined $query_file) {
 ## translate sequences
 ##
 if ($translate) {
-    print STDERR "\r>> Start translating sequences ... ";
+    print STDERR "\r>> Start translating sequences ... " unless($quite_mode);
     my @translated_seqs = ();
     for (my $i=0; $i<@output_ids; $i++)
     {
@@ -369,7 +378,7 @@ if ($translate) {
     }
     
     @output_seqs = @translated_seqs;
-    print STDERR "done!\n";
+    print STDERR "done!\n" unless($quite_mode);
 }
 
 
@@ -411,6 +420,9 @@ if ($count_nucl) {
     elsif ($count_nucl eq 'homopolymer') {
         print STDOUT "#seq_id\thomopolymers\tlength\tcount\n";
     }
+    elsif ($count_nucl eq 'informative') {
+        print STDOUT "#seq_id\tinformative_length\n";
+    }
 }
 
 if ($out_format eq 'mega') {
@@ -428,7 +440,7 @@ if ($count_nucl && $count_overall) {
     @output_ids  = qw(Overall);
 }
 
-print STDERR ">> Start writing results ... ";
+print STDERR ">> Start writing results ... " unless($quite_mode);
 for (my $i=0; $i < @output_ids; $i++)
 {
     my $out_id = $output_ids[$i];
@@ -494,6 +506,10 @@ for (my $i=0; $i < @output_ids; $i++)
         elsif ($count_nucl eq 'homopolymer') {
             count_polymers($out_id, \$seq);
         }
+        elsif ($count_nucl eq 'informative') {
+            my $info_len = ($seq =~ tr/ATGCatgc/ATGCatgc/);
+            print STDOUT "$out_id\t$info_len\n";
+        }
     }
     elsif ($out_format eq 'fasta') {
         print STDOUT format_fasta_SEQs($out_id, \$seq, $word_wrap);
@@ -519,9 +535,9 @@ for (my $i=0; $i < @output_ids; $i++)
         print STDOUT "$seq\n";
     }
 }
-print STDERR "done!\n";
+print STDERR "done!\n" unless($quite_mode);
 
-print STDERR "# " . (scalar localtime()) . "\n";
+print STDERR "# " . (scalar localtime()) . "\n" unless($quite_mode);
 
 
 
@@ -642,7 +658,7 @@ sub sort_fasta
     elsif (-f $out_order) {
         my @ref_ids = ();
         
-        print STDERR ">> Start parsing $out_order ... ";
+        print STDERR ">> Start parsing $out_order ... " unless($quite_mode);
         my $fh = getInputFilehandle($out_order);
         while (<$fh>)
         {
@@ -652,7 +668,7 @@ sub sort_fasta
             
             push @ref_ids, $id;
         }
-        print STDERR "done!\n";
+        print STDERR "done!\n" unless($quite_mode);
         
         my %counts   = ();
         my @no_order = ();
