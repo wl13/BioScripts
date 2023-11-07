@@ -5,8 +5,8 @@
 #
 #   Author: Nowind
 #   Created: 2012-05-31
-#   Updated: 2017-02-16
-#   Version: 1.1.9
+#   Updated: 2023-10-30
+#   Version: 1.2.0
 #
 #   Change logs:
 #   Version 1.0.0 12/09/18: The initial version.
@@ -20,6 +20,7 @@
 #   Version 1.1.7 16/05/31: Updated: Add option "--no-secondary"; remove mapped subject rows to reduce redundancy.
 #   Version 1.1.8 16/06/13: Bug fixed while no remain fields present in subject file.
 #   Version 1.1.9 16/02/16: Deprecated non-functional "-q" and "-s" options.
+#   Version 1.2.0 23/10/30: Bug fixed: --no-dups prints empty results; add support for setting delimiters separately for query and subject files.
 
 use strict;
 
@@ -34,11 +35,12 @@ use MyPerl::FileIO qw(:all);
 
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '1.1.9';
+my $VERSION = '1.2.0';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 
 
-my $delimiter  = '\s+';
+my $qdelimiter  = '\s+';
+my $sdelimiter  = '\s+';
 my $flank_len  = 0;
 my ($query_file, $subject_file, $output, $interval,
     @query_rows, @subject_rows, $match_str, @sub_set, $out_first_only, $merge_sub_dups);
@@ -46,7 +48,8 @@ GetOptions(
             "query=s"          => \$query_file,
             "subject=s"        => \$subject_file,
             "output=s"         => \$output,
-            "delimiter=s"      => \$delimiter,
+            "qdelimiter=s"     => \$qdelimiter,
+            "sdelimiter=s"     => \$sdelimiter,
             "interval"         => \$interval,
             "flanking=i"       => \$flank_len,
             "match=s"          => \$match_str,
@@ -93,10 +96,11 @@ Options:
         flanking region length to extend the interval, only valid while
         -i option is specified
 
-    -d, --delimiter <string>
+    --qdelimiter <string>
+    --sdelimiter <string>
         specify a delimiter while reading input files, such as ",",
         "\\t", multiple delimiters can be set such as ",|\\t"
-        [default: "\\s+"]
+        [default: "\\s+" for both query and subject]
     --match     <string>
         only considering lines matching a pattern, support perl
         regular expression
@@ -146,7 +150,7 @@ while (<$fh1>)
     next if ($match_str && !/$match_str/);
     
     if ($interval) {
-        my ($start, $end, @cmp_rows) = (split /$delimiter/, $_)[@query_rows];
+        my ($start, $end, @cmp_rows) = (split /$qdelimiter/, $_)[@query_rows];
         
         for my $pos (($start-$flank_len)..($end+$flank_len))
         {
@@ -155,7 +159,7 @@ while (<$fh1>)
         }
     }
     else {
-        my $cmp_rows = join "\t", ((split /$delimiter/, $_)[@query_rows]);
+        my $cmp_rows = join "\t", ((split /$qdelimiter/, $_)[@query_rows]);
         
         $Query{$cmp_rows}->{query} = 1;
     }
@@ -176,7 +180,7 @@ while (<$fh2>)
     
     chomp;
     
-    my @all_rows = (split /$delimiter/, $_);
+    my @all_rows = (split /$sdelimiter/, $_);
     
     my $cmp_rows = join "\t", @all_rows[@subject_rows];
     
@@ -217,7 +221,7 @@ foreach (@Query_Records)
     chomp;
     
     if ($interval) {
-        my ($start, $end, @cmp_rows) = (split /$delimiter/, $_)[@query_rows];
+        my ($start, $end, @cmp_rows) = (split /$qdelimiter/, $_)[@query_rows];
         
         for my $pos (($start-$flank_len)..($end+$flank_len))
         {
@@ -233,6 +237,7 @@ foreach (@Query_Records)
             {
                 
                 if ($out_first_only) {
+                    print STDOUT "$_\t$record\n";
                     last;
                 }
                 elsif ($merge_sub_dups) {
@@ -252,7 +257,7 @@ foreach (@Query_Records)
         }        
     }
     else {
-        my $cmp_rows = join "\t", ((split /$delimiter/, $_)[@query_rows]);
+        my $cmp_rows = join "\t", ((split /$qdelimiter/, $_)[@query_rows]);
         
         unless( $Query{$cmp_rows}->{cmp} ) {
             print STDOUT "$_\tN/A\n";
@@ -264,6 +269,7 @@ foreach (@Query_Records)
         {
             
             if ($out_first_only) {
+                print STDOUT "$_\t$record\n";
                 last;
             }
             elsif ($merge_sub_dups) {

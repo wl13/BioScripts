@@ -5,7 +5,7 @@
 #
 #   Author: Nowind
 #   Created: 2011-01-08
-#   Updated: 2023-03-28
+#   Updated: 2023-09-23
 #
 #   Change logs:
 #   Version 1.0.0 12/12/03: The initial version.
@@ -49,6 +49,8 @@
 #                                   (2) change diff(R/A, R/A) from 0 to 0.5 when using "--weight-for-het" to better estimating haploid diversity;
 #                                   (3) add related notes in descriptions.
 #   Version 2.1.1 23/03/28: Update: add support for csi-index.
+#   Version 2.1.2 23/05/20: Update: add support for output number of differences.
+#   Version 2.1.3 23/09/23: Update: add a different mode when handling heterozygous variants.
 
 
 
@@ -110,7 +112,7 @@ use Statistics::Descriptive;
 ############################# Main ###########################
 
 my $CMDLINE = "perl $0 @ARGV";
-my $VERSION = '2.1.1';
+my $VERSION = '2.1.3';
 my $HEADER  = "##$CMDLINE\n##Version: $VERSION\n";
 
 
@@ -162,7 +164,7 @@ GetOptions(
             
             "exclude=s{,}"       => \@{$options{exclude_ids}},
             
-            "weight-for-het"     => \$weight_for_het,
+            "weight-for-het=s"   => \$weight_for_het,
            );
 
 unless( !$show_help && $vcf_file ) {
@@ -237,10 +239,14 @@ Options:
         windows
 
     -m, --model   <string>
-        model for estimating distances, "p-distance" or "Jukes-Cantor"
+        model for estimating distances, "count", "p-distance" or "Jukes-Cantor"
+        
+        count: simply report the number of differences;
+        
         p-distance:   proportion of nucleotide sites at which two sequences
         being compared are different, obtained by dividing the number of
         nucleotide differences by the total number of nucleotides compared;
+        
         Jukes-Cantor: Jukes and Cantor (1969) model, assumes an equality of
         substitution rates among sites 
         [default: p-distance]
@@ -283,20 +289,36 @@ Options:
     -A, --het-as-alt
         assume heterozygous calls as homozygous alternative calls
     
-    --weight-for-het
+    --weight-for-het  <string>
         by default this script assumes a haploid or homozygous diploid model,
         by which heterozygous genotype (R/A) is treated as different allele
         from both reference (R/R) and alternative allele (A/A), i.e.
         
-            diff(R/A, R/R) = (R/A, A/A) = 1, and diff(R/A, R/A) = 0
+            diff(R/R, A/A) = diff(R/A, R/R) = (R/A, A/A) = 1
+            diff(R/A, R/A) = 0
             
-        specifying this option will consider a more realistic diploid model,
-        by which difference between homozygous and heterozygous, as well as
-        between heterozygous and heterozygous will be counted as 0.5 instead
-        of 1, i.e.
+        there are two possible ways to processing heterozygous variants,
+        depending on the purpose of calculation:
         
+        (1) [pop, default mode if this option is specified]
+            the aim is to more accurately estimate the population-level
+            nucleotide diversity, where the heterozygosity level should be
+            included, so difference between homozygous and heterozygous,
+            as well as between heterozygous and heterozygous will be counted
+            as 0.5, i.e.
+            
+            diff(R/R, A/A) = 1
             diff(R/A, R/A) = diff(R/A, R/R) = diff(R/A, A/A) = 0.5
-        
+            
+        (2) [pair]
+            the aim is to estimate the difference between each pair of two
+            samples, the difference between two heterozygous variants may be
+            ignored, i.e.
+            
+            diff(R/R, A/A) = 1
+            diff(R/A, R/R) = diff(R/A, A/A) = 0.5
+            diff(R/A, R/A) = 0
+            
         Higher ploidy is not supported currently
     
     -t, --threads  <int>
@@ -755,7 +777,10 @@ sub calc_pairwise_diversity
                 }
                 
                 if ($weight_for_het && ($genotype1 =~ /het/ || $genotype2 =~ /het/)) {
-                    $differs{"$SAMPLE_NAMES[$i]\-$SAMPLE_NAMES[$i]"} += 0.5;
+                    unless (($weight_for_het eq "pair") && ($genotype1 eq $genotype2)) {
+                        $differs{"$SAMPLE_NAMES[$i]\-$SAMPLE_NAMES[$i]"} += 0.5;
+                    }
+                    
                 } elsif ($genotype1 ne $genotype2) {
                     $differs{"$SAMPLE_NAMES[$i]\-$SAMPLE_NAMES[$i]"} ++;
                 }
@@ -786,7 +811,9 @@ sub calc_pairwise_diversity
                     ###my $pair = join "\t", (sort ($Names[$i], $Names[$j]));
                     
                     if ($weight_for_het && ($genotype1 =~ /het/ || $genotype2 =~ /het/)) {
-                        $differs{"$sample1\-$sample2"} += 0.5;
+                        unless (($weight_for_het eq "pair") && ($genotype1 eq $genotype2)) {
+                            $differs{"$sample1\-$sample2"} += 0.5;
+                        }
                     } elsif ($genotype1 ne $genotype2) {
                         $differs{"$sample1\-$sample2"} ++;
                     }
@@ -816,6 +843,9 @@ sub calc_pairwise_diversity
             ###print STDERR "Use Jukes-Cantor, before: $distance\n";
             $distance = ($distance >= 3/4) ? -1 : (0 - (3/4) * log(1 - (4/3*$distance)));
             ###print STDERR "Use Jukes-Cantor, after: $distance\n";
+        }
+        elsif ($distance_model eq 'count') {
+            $distance = $differs{$pair};
         }
         
         $pair_divers{$chrom}->{$id}->{$pair} = $distance;
